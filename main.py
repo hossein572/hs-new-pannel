@@ -1695,6 +1695,109 @@ async def list_links(_=Depends(require_auth)):
     result.sort(key=lambda x: x["created_at"], reverse=True)
     return {"links": result}
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# API: تست/پینگ کانفیگ — بررسی اتصال واقعی به endpoint
+# ══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/links/{uid}/test")
+async def test_link(uid: str, _=Depends(require_auth)):
+    """
+    یه درخواست واقعی به endpoint کانفیگ میفرسته و زمان پاسخ + وضعیت TLS
+    رو برمیگردونه. مثل ping اپ‌های VPN.
+    """
+    import time
+    import socket
+    import ssl
+    from urllib.parse import urlparse
+
+    async with LINKS_LOCK:
+        link = LINKS.get(uid)
+
+    if not link:
+        return {"ok": False, "error": "config not found"}
+
+    if not is_link_allowed(link):
+        return {"ok": False, "error": "config disabled or quota exceeded"}
+
+    host = get_host()
+    protocol = link.get("protocol", DEFAULT_PROTOCOL)
+
+    result = {
+        "ok": False,
+        "uuid": uid,
+        "label": link.get("label", ""),
+        "protocol": protocol,
+        "host": host,
+        "tests": [],
+    }
+
+    # تست ۱: DNS resolve
+    t0 = time.time()
+    try:
+        ip = socket.gethostbyname(host)
+        dns_ms = int((time.time() - t0) * 1000)
+        result["tests"].append({"name": "DNS resolve", "ok": True, "ms": dns_ms, "detail": f"{host} → {ip}"})
+    except Exception as e:
+        result["tests"].append({"name": "DNS resolve", "ok": False, "error": str(e)})
+        return result
+
+    # تست ۲: TCP connect به 443
+    t0 = time.time()
+    try:
+        sock = socket.create_connection((host, 443), timeout=5)
+        tcp_ms = int((time.time() - t0) * 1000)
+        sock.close()
+        result["tests"].append({"name": "TCP connect (:443)", "ok": True, "ms": tcp_ms})
+    except Exception as e:
+        result["tests"].append({"name": "TCP connect (:443)", "ok": False, "error": str(e)})
+        return result
+
+    # تست ۳: TLS handshake
+    t0 = time.time()
+    try:
+        ctx = ssl.create_default_context()
+        with socket.create_connection((host, 443), timeout=5) as sock:
+            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                tls_ms = int((time.time() - t0) * 1000)
+                cert = ssock.getpeercert()
+                tls_ver = ssock.version()
+        result["tests"].append({"name": "TLS handshake", "ok": True, "ms": tls_ms, "detail": f"{tls_ver} · cert={cert.get('subject', [[('CN', '?')]])[0][0][1] if cert else '?'}"})
+    except Exception as e:
+        result["tests"].append({"name": "TLS handshake", "ok": False, "error": str(e)})
+        return result
+
+    # تست ۴: HTTP probe به endpoint کانفیگ
+    if protocol == "vless-ws":
+        path = f"/ws/{uid}"
+    elif protocol == "trojan-ws":
+        path = "/trojan-ws"
+    elif protocol.startswith("xhttp-"):
+        mode = protocol.replace("xhttp-", "")
+        path = f"/xhttp-siz10/{mode}/{uid}"
+    elif protocol.startswith("trojan-xhttp-"):
+        mode = protocol.replace("trojan-xhttp-", "")
+        path = f"/txhttp-siz10/{mode}/{uid}"
+    else:
+        path = f"/ws/{uid}"
+
+    t0 = time.time()
+    try:
+        import urllib.request
+        req = urllib.request.Request(f"https://{host}{path}", method="GET", headers={"User-Agent": "HS-Panel-Test/1.0"})
+        with urllib.request.urlopen(req, timeout=5, context=ssl.create_default_context()) as resp:
+            http_ms = int((time.time() - t0) * 1000)
+            status = resp.status
+        result["tests"].append({"name": f"HTTP probe {path}", "ok": 200 <= status < 500, "ms": http_ms, "detail": f"status={status}"})
+        if 200 <= status < 500:
+            result["ok"] = True
+    except Exception as e:
+        result["tests"].append({"name": f"HTTP probe {path}", "ok": False, "error": str(e)})
+
+    # محاسبه latency کل
+    total_ms = sum(t.get("ms", 0) for t in result["tests"] if t.get("ms"))
+    result["total_ms"] = total_ms
+    return result
+
 @app.patch("/api/links/{uid}")
 async def update_link(uid: str, request: Request, _=Depends(require_auth)):
     body = await request.json()
@@ -2445,6 +2548,28 @@ app.add_api_websocket_route("/trojan-ws", trojan_ws_tunnel)
 from protocol.shadowsocks.shadowsocks import generate_ss_link, derive_key, CIPHERS, DEFAULT_CIPHER
 from protocol.shadowsocks.websocket import shadowsocks_ws_tunnel
 app.add_api_websocket_route("/ss-ws", shadowsocks_ws_tunnel)
+
+
+# ── HTTP probe endpoints (برای Railway/Render و CDN‌ها) ──────────────────────
+# V2RayNG و بسیاری از کلاینت‌ها قبل از WebSocket Upgrade یه HTTP GET می‌فرستن
+# (Health check / TLS probe). اگه 404/403 برگرده، connection قطع میشه.
+# این endpointها 200 برمی‌گردونن تا probe موفق بشه و Upgrade ادامه پیدا کنه.
+@app.api_route("/ws/{uuid}", methods=["GET", "HEAD", "POST"])
+async def ws_http_probe(uuid: str):
+    return {"ok": True, "service": "HS-Panel", "transport": "ws"}
+
+@app.api_route("/trojan-ws", methods=["GET", "HEAD", "POST"])
+async def trojan_ws_http_probe():
+    return {"ok": True, "service": "HS-Panel", "transport": "trojan-ws"}
+
+@app.api_route("/ss-ws", methods=["GET", "HEAD", "POST"])
+async def ss_ws_http_probe():
+    return {"ok": True, "service": "HS-Panel", "transport": "ss-ws"}
+
+# XHTTP pathها هم probe-friendly میشن
+@app.api_route("/xhttp-siz10/{mode}/{uuid}", methods=["GET", "HEAD"])
+async def xhttp_http_probe(mode: str, uuid: str):
+    return {"ok": True, "service": "HS-Panel", "transport": f"xhttp-{mode}"}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # XHTTP

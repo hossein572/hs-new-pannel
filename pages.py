@@ -918,14 +918,14 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); }));
 
 /* ════ TOAST ════ */
-function showToast(msg, type='info'){
+function showToast(msg, type='info', duration=3500){
   const h = document.getElementById('toast-host');
   const t = document.createElement('div');
   t.className = 'toast ' + type;
   const ic = {success:'ti-circle-check',error:'ti-circle-x',warn:'ti-alert-triangle',info:'ti-info-circle'}[type] || 'ti-info-circle';
   t.innerHTML = '<i class="ti ' + ic + '"></i><span>' + msg + '</span>';
   h.appendChild(t);
-  setTimeout(() => { t.classList.add('exit'); setTimeout(() => t.remove(), 250); }, 3500);
+  setTimeout(() => { t.classList.add('exit'); setTimeout(() => t.remove(), 250); }, duration);
 }
 
 /* ════ LOGOUT ════ */
@@ -990,7 +990,7 @@ async function loadLinks(){
         '<td><div class="cell-mono">' + fmtBytes(used) + '</div>' + (lim>0 ? '<div style="height:3px;background:var(--hs-border2);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--hs-purple),var(--hs-violet))"></div></div>' : '') + '</td>' +
         '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
         '<td>' + (l.expired ? '<span class="badge badge-red badge-dot">منقضی</span>' : l.active===false ? '<span class="badge badge-amber badge-dot">غیرفعال</span>' : '<span class="badge badge-green badge-dot">فعال</span>') + '</td>' +
-        '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
+        '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="testLink(\'' + l.uuid + '\')" title="تست/پینگ"><i class="ti ti-bolt"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
     }).join('');
   } catch(e){ showToast('خطا در بارگذاری کانفیگ‌ها','error'); }
 }
@@ -1037,6 +1037,43 @@ async function copyLink(uid){
     const l = (d.links||[]).find(x => x.uuid === uid);
     if(l && l.vless_link){ navigator.clipboard.writeText(l.vless_link); showToast('لینک کپی شد','success'); }
   } catch(e){ showToast('خطا در کپی','error'); }
+}
+
+async function testLink(uid){
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader"></i>';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/links/' + uid + '/test');
+    const d = await r.json();
+    let html = '<div style="text-align:right;direction:rtl;min-width:280px">';
+    html += '<div style="font-weight:600;margin-bottom:8px;color:var(--hs-purple)">🔍 تست کانفیگ</div>';
+    html += '<div style="font-size:12px;color:var(--hs-text2);margin-bottom:10px">' + (d.label||'—') + ' · ' + (d.protocol||'') + '</div>';
+    if (!d.tests || !d.tests.length){
+      html += '<div style="color:#f55">❌ ' + (d.error || 'خطای ناشناخته') + '</div>';
+    } else {
+      d.tests.forEach(t => {
+        const icon = t.ok ? '✅' : '❌';
+        const ms = t.ms != null ? ' <span style="color:var(--hs-text2);font-size:11px">(' + t.ms + 'ms)</span>' : '';
+        html += '<div style="padding:4px 0;border-bottom:1px solid var(--hs-border)">' + icon + ' <b>' + t.name + '</b>' + ms;
+        if (t.detail) html += '<div style="font-size:11px;color:var(--hs-text2);margin-right:20px">' + t.detail + '</div>';
+        if (t.error) html += '<div style="font-size:11px;color:#f55;margin-right:20px">' + t.error + '</div>';
+        html += '</div>';
+      });
+      if (d.total_ms != null){
+        html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--hs-border);font-weight:600">⏱ کل: ' + d.total_ms + 'ms</div>';
+      }
+    }
+    html += '</div>';
+    const ok = d.ok;
+    showToast(html, ok ? 'success' : 'error', 8000);
+  } catch(e){
+    showToast('خطا در تست: ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
 }
 
 async function toggleLink(uid, currentActive){
