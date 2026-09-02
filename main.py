@@ -2543,17 +2543,14 @@ from protocol.vless.websocket import websocket_tunnel
 
 from protocol.trojan.websocket import trojan_ws_tunnel
 
-app.add_api_websocket_route("/ws/{uuid}", websocket_tunnel)
-app.add_api_websocket_route("/trojan-ws", trojan_ws_tunnel)
 from protocol.shadowsocks.shadowsocks import generate_ss_link, derive_key, CIPHERS, DEFAULT_CIPHER
 from protocol.shadowsocks.websocket import shadowsocks_ws_tunnel
-app.add_api_websocket_route("/ss-ws", shadowsocks_ws_tunnel)
 
 
 # ── HTTP probe endpoints (برای Railway/Render و CDN‌ها) ──────────────────────
 # V2RayNG و بسیاری از کلاینت‌ها قبل از WebSocket Upgrade یه HTTP GET می‌فرستن
 # (Health check / TLS probe). اگه 404/403 برگرده، connection قطع میشه.
-# این endpointها 200 برمی‌گردونن تا probe موفق بشه و Upgrade ادامه پیدا کنه.
+# این endpointها باید قبل از WebSocket routes ثبت بشن تا FastAPI اول این‌ها رو match کنه.
 @app.api_route("/ws/{uuid}", methods=["GET", "HEAD", "POST"])
 async def ws_http_probe(uuid: str):
     return {"ok": True, "service": "HS-Panel", "transport": "ws"}
@@ -2570,6 +2567,11 @@ async def ss_ws_http_probe():
 @app.api_route("/xhttp-siz10/{mode}/{uuid}", methods=["GET", "HEAD"])
 async def xhttp_http_probe(mode: str, uuid: str):
     return {"ok": True, "service": "HS-Panel", "transport": f"xhttp-{mode}"}
+
+# حالا WebSocket routes ثبت میشن
+app.add_api_websocket_route("/ws/{uuid}", websocket_tunnel)
+app.add_api_websocket_route("/trojan-ws", trojan_ws_tunnel)
+app.add_api_websocket_route("/ss-ws", shadowsocks_ws_tunnel)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # XHTTP
