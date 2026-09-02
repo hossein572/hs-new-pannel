@@ -713,7 +713,10 @@ tbody tr:hover{background:var(--hs-purple-d)}
         <div class="tbl-wrap">
           <div class="tbl-head">
             <div class="tbl-title"><i class="ti ti-list"></i> لیست کانفیگ‌ها</div>
-            <input type="text" placeholder="جستجو..." style="padding:7px 12px;border-radius:8px;border:1px solid var(--hs-border2);background:rgba(0,0,0,.18);color:var(--hs-text);font-family:inherit;font-size:12px;outline:none" oninput="filterLinks(this.value)">
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-ghost btn-sm" onclick="showCloudflareIPs()" title="IP های Static"><i class="ti ti-world"></i> IP Static</button>
+              <input type="text" placeholder="جستجو..." style="padding:7px 12px;border-radius:8px;border:1px solid var(--hs-border2);background:rgba(0,0,0,.18);color:var(--hs-text);font-family:inherit;font-size:12px;outline:none" oninput="filterLinks(this.value)">
+            </div>
           </div>
           <div class="tbl-scroll">
             <table id="links-tbl">
@@ -1070,6 +1073,31 @@ async function testLink(uid){
     showToast(html, ok ? 'success' : 'error', 8000);
   } catch(e){
     showToast('خطا در تست: ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+  }
+}
+
+async function showCloudflareIPs(){
+  const btn = event.target.closest('button');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader"></i>';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/cloudflare-ips');
+    const d = await r.json();
+    let html = '<div style="text-align:right;direction:rtl;min-width:360px;max-height:400px;overflow-y:auto">';
+    html += '<div style="font-weight:600;margin-bottom:6px;color:var(--hs-purple)">🌐 IP های Static (Cloudflare)</div>';
+    html += '<div style="font-size:11px;color:var(--hs-text2);margin-bottom:10px">Host: ' + d.host + '<br>اگه DNS فیلتره، این IP ها رو مستقیم تو کانفیگ بذار. SNI = host.</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:monospace;font-size:11px">';
+    d.ips.forEach(ip => {
+      html += '<div style="padding:4px 8px;background:rgba(124,92,231,.1);border-radius:4px;cursor:pointer" onclick="navigator.clipboard.writeText(\'' + ip + '\');showToast(\'کپی شد: ' + ip + '\',\'success\',2000)">' + ip + '</div>';
+    });
+    html += '</div></div>';
+    showToast(html, 'info', 30000);
+  } catch(e){
+    showToast('خطا: ' + e.message, 'error');
   } finally {
     btn.innerHTML = orig;
     btn.disabled = false;

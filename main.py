@@ -84,6 +84,24 @@ DATA_FILE = DATA_DIR / "hs_state.json"
 SECRET_FILE = DATA_DIR / ".hs_secret"
 SAVE_LOCK = asyncio.Lock()
 
+# Cloudflare IP های پایدار — برای مواقعی که DNS تحریم/فیلتر باشه، کلاینت بتونه
+# مستقیم با IP وصل بشه. Worker به هر IP‌ای از این لیست میتونه وصل بشه.
+CLOUDFLARE_IPS = [
+    "104.16.0.0", "104.17.0.0", "104.18.0.0", "104.19.0.0", "104.20.0.0",
+    "104.21.0.0", "104.22.0.0", "104.23.0.0", "104.24.0.0", "104.25.0.0",
+    "104.26.0.0", "104.27.0.0", "172.64.0.0", "172.65.0.0", "172.66.0.0",
+    "172.67.0.0", "188.114.96.0", "188.114.97.0", "188.114.98.0", "188.114.99.0",
+    "162.158.0.0", "162.159.0.0", "141.101.64.0", "141.101.65.0", "141.101.66.0",
+    "141.101.67.0", "141.101.68.0", "141.101.69.0", "141.101.70.0", "141.101.71.0",
+    "190.93.240.0", "190.93.241.0", "190.93.242.0", "190.93.243.0", "190.93.244.0",
+    "190.93.245.0", "190.93.246.0", "190.93.247.0", "190.93.248.0", "190.93.249.0",
+    "190.93.250.0", "190.93.251.0", "190.93.252.0", "190.93.253.0", "190.93.254.0",
+    "190.93.255.0", "197.234.240.0", "197.234.241.0", "197.234.242.0", "197.234.243.0",
+    "197.234.244.0", "197.234.245.0", "197.234.246.0", "197.234.247.0", "197.234.248.0",
+    "197.234.249.0", "197.234.250.0", "197.234.251.0", "197.234.252.0", "197.234.253.0",
+    "197.234.254.0", "197.234.255.0",
+]
+
 
 def _get_or_create_secret() -> str:
     env_secret = os.environ.get("SECRET_KEY")
@@ -486,8 +504,14 @@ async def shutdown():
         await http_client.aclose()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+# اولویت با PUBLIC_HOST env (Cloudflare Worker) هست، بعد RAILWAY_PUBLIC_DOMAIN
+# اگه هیچ‌کدوم نبود، از CONFIG["host"] استفاده میشه
 def get_host() -> str:
-    return os.environ.get("RAILWAY_PUBLIC_DOMAIN", CONFIG["host"])
+    return (
+        os.environ.get("PUBLIC_HOST")
+        or os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+        or CONFIG["host"]
+    )
 
 def generate_uuid() -> str:
     h = secrets.token_hex(16)
@@ -1697,6 +1721,18 @@ async def list_links(_=Depends(require_auth)):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# API: لیست IP های static (Cloudflare) — برای مواقع فیلتر DNS
+# ══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/cloudflare-ips")
+async def api_cloudflare_ips(_=Depends(require_auth)):
+    return {
+        "host": get_host(),
+        "ips": CLOUDFLARE_IPS,
+        "note": "از هر IP بالا میتونی به‌عنوان host در کانفیگ استفاده کنی. SNI رو روی host اصلی (Worker URL) تنظیم کن.",
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # API: تست/پینگ کانفیگ — بررسی اتصال واقعی به endpoint
 # ══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/links/{uid}/test")
@@ -2882,12 +2918,40 @@ async def test_ws_redirect():
     return HTMLResponse(content="<script>location.href='/dashboard'</script>")
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=CONFIG["port"],
-        log_level="info",
-        workers=1,
-        loop="auto",         # uvloop رو در صورت نصب بودن استفاده می‌کنه، وگرنه بدون کرش fallback می‌کنه
-        http="auto",
-    )
+    # Cloudflare Worker روی پورت 80 وصل میشه (Railway از 443 استفاده می‌کنه ولی
+    # Cloudflare Worker به 443 Railway نمیتونه مستقیم بزنه چون CDN وسطشه).
+    # بنابراین هم پورت اصلی (CONFIG["port"] = 8000) و هم پورت 80 گوش میدیم.
+    import threading
+    main_port = CONFIG["port"]
+
+    def run_main():
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=main_port,
+            log_level="info",
+            workers=1,
+            loop="auto",
+            http="auto",
+        )
+
+    def run_extra():
+        try:
+            uvicorn.run(
+                app,
+                host="0.0.0.0",
+                port=80,
+                log_level="warning",
+                workers=1,
+                loop="auto",
+                http="auto",
+            )
+        except OSError as e:
+            # پورت 80 در برخی محیط‌ها باز نیست — مشکلی نیست
+            logger.warning(f"پورت 80 باز نشد: {e}")
+
+    if main_port != 80:
+        t = threading.Thread(target=run_extra, daemon=True)
+        t.start()
+
+    run_main()
