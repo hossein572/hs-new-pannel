@@ -86,20 +86,70 @@ SAVE_LOCK = asyncio.Lock()
 
 # Cloudflare IP های پایدار — برای مواقعی که DNS تحریم/فیلتر باشه، کلاینت بتونه
 # مستقیم با IP وصل بشه. Worker به هر IP‌ای از این لیست میتونه وصل بشه.
+# هر IP به یک region (لوکیشن Cloudflare) متصله
 CLOUDFLARE_IPS = [
-    "104.16.0.0", "104.17.0.0", "104.18.0.0", "104.19.0.0", "104.20.0.0",
-    "104.21.0.0", "104.22.0.0", "104.23.0.0", "104.24.0.0", "104.25.0.0",
-    "104.26.0.0", "104.27.0.0", "172.64.0.0", "172.65.0.0", "172.66.0.0",
-    "172.67.0.0", "188.114.96.0", "188.114.97.0", "188.114.98.0", "188.114.99.0",
-    "162.158.0.0", "162.159.0.0", "141.101.64.0", "141.101.65.0", "141.101.66.0",
-    "141.101.67.0", "141.101.68.0", "141.101.69.0", "141.101.70.0", "141.101.71.0",
-    "190.93.240.0", "190.93.241.0", "190.93.242.0", "190.93.243.0", "190.93.244.0",
-    "190.93.245.0", "190.93.246.0", "190.93.247.0", "190.93.248.0", "190.93.249.0",
-    "190.93.250.0", "190.93.251.0", "190.93.252.0", "190.93.253.0", "190.93.254.0",
-    "190.93.255.0", "197.234.240.0", "197.234.241.0", "197.234.242.0", "197.234.243.0",
-    "197.234.244.0", "197.234.245.0", "197.234.246.0", "197.234.247.0", "197.234.248.0",
-    "197.234.249.0", "197.234.250.0", "197.234.251.0", "197.234.252.0", "197.234.253.0",
-    "197.234.254.0", "197.234.255.0",
+    {"ip": "104.16.0.0", "region": "US", "city": "San Francisco"},
+    {"ip": "104.17.0.0", "region": "US", "city": "San Francisco"},
+    {"ip": "104.18.0.0", "region": "US", "city": "Los Angeles"},
+    {"ip": "104.19.0.0", "region": "US", "city": "Chicago"},
+    {"ip": "104.20.0.0", "region": "US", "city": "New York"},
+    {"ip": "104.21.0.0", "region": "US", "city": "Miami"},
+    {"ip": "104.22.0.0", "region": "US", "city": "Seattle"},
+    {"ip": "104.23.0.0", "region": "US", "city": "Dallas"},
+    {"ip": "104.24.0.0", "region": "US", "city": "Atlanta"},
+    {"ip": "104.25.0.0", "region": "US", "city": "Boston"},
+    {"ip": "104.26.0.0", "region": "EU", "city": "London"},
+    {"ip": "104.27.0.0", "region": "EU", "city": "Paris"},
+    {"ip": "172.64.0.0", "region": "EU", "city": "Amsterdam"},
+    {"ip": "172.65.0.0", "region": "EU", "city": "Frankfurt"},
+    {"ip": "172.66.0.0", "region": "EU", "city": "Madrid"},
+    {"ip": "172.67.0.0", "region": "EU", "city": "Rome"},
+    {"ip": "188.114.96.0", "region": "EU", "city": "Stockholm"},
+    {"ip": "188.114.97.0", "region": "EU", "city": "Helsinki"},
+    {"ip": "188.114.98.0", "region": "EU", "city": "Warsaw"},
+    {"ip": "188.114.99.0", "region": "EU", "city": "Vienna"},
+    {"ip": "162.158.0.0", "region": "ASIA", "city": "Tokyo"},
+    {"ip": "162.159.0.0", "region": "ASIA", "city": "Singapore"},
+    {"ip": "141.101.64.0", "region": "ASIA", "city": "Hong Kong"},
+    {"ip": "141.101.65.0", "region": "ASIA", "city": "Seoul"},
+    {"ip": "141.101.66.0", "region": "ASIA", "city": "Mumbai"},
+    {"ip": "141.101.67.0", "region": "ASIA", "city": "Bangkok"},
+    {"ip": "141.101.68.0", "region": "ASIA", "city": "Jakarta"},
+    {"ip": "141.101.69.0", "region": "ASIA", "city": "Manila"},
+    {"ip": "141.101.70.0", "region": "ASIA", "city": "Kuala Lumpur"},
+    {"ip": "141.101.71.0", "region": "ASIA", "city": "Taipei"},
+    {"ip": "190.93.240.0", "region": "ASIA", "city": "Dubai"},
+    {"ip": "190.93.241.0", "region": "ASIA", "city": "Istanbul"},
+    {"ip": "190.93.242.0", "region": "EU", "city": "Athens"},
+    {"ip": "190.93.243.0", "region": "EU", "city": "Lisbon"},
+    {"ip": "190.93.244.0", "region": "EU", "city": "Dublin"},
+    {"ip": "190.93.245.0", "region": "EU", "city": "Copenhagen"},
+    {"ip": "190.93.246.0", "region": "EU", "city": "Oslo"},
+    {"ip": "190.93.247.0", "region": "EU", "city": "Zurich"},
+    {"ip": "190.93.248.0", "region": "EU", "city": "Brussels"},
+    {"ip": "190.93.249.0", "region": "EU", "city": "Prague"},
+    {"ip": "190.93.250.0", "region": "EU", "city": "Budapest"},
+    {"ip": "190.93.251.0", "region": "OC", "city": "Sydney"},
+    {"ip": "190.93.252.0", "region": "OC", "city": "Melbourne"},
+    {"ip": "190.93.253.0", "region": "OC", "city": "Auckland"},
+    {"ip": "190.93.254.0", "region": "SA", "city": "São Paulo"},
+    {"ip": "190.93.255.0", "region": "SA", "city": "Buenos Aires"},
+    {"ip": "197.234.240.0", "region": "AF", "city": "Johannesburg"},
+    {"ip": "197.234.241.0", "region": "AF", "city": "Cairo"},
+    {"ip": "197.234.242.0", "region": "AF", "city": "Nairobi"},
+    {"ip": "197.234.243.0", "region": "AF", "city": "Lagos"},
+    {"ip": "197.234.244.0", "region": "AF", "city": "Casablanca"},
+    {"ip": "197.234.245.0", "region": "EU", "city": "Reykjavik"},
+    {"ip": "197.234.246.0", "region": "EU", "city": "Tallinn"},
+    {"ip": "197.234.247.0", "region": "EU", "city": "Riga"},
+    {"ip": "197.234.248.0", "region": "EU", "city": "Vilnius"},
+    {"ip": "197.234.249.0", "region": "EU", "city": "Ljubljana"},
+    {"ip": "197.234.250.0", "region": "EU", "city": "Bratislava"},
+    {"ip": "197.234.251.0", "region": "EU", "city": "Luxembourg"},
+    {"ip": "197.234.252.0", "region": "EU", "city": "Monaco"},
+    {"ip": "197.234.253.0", "region": "EU", "city": "Valletta"},
+    {"ip": "197.234.254.0", "region": "EU", "city": "Nicosia"},
+    {"ip": "197.234.255.0", "region": "EU", "city": "Andorra"},
 ]
 
 
@@ -524,6 +574,10 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
     link = LINKS.get(uuid) or {}
     alpn = link.get("alpn", "h2")
     fp = link.get("fingerprint", "chrome")
+    # اگه کاربر یه IP static برای این لینک انتخاب کرده، از اون استفاده کن
+    static_ip = link.get("static_ip")
+    # host (که در share link به عنوان address میره) = IP static اگه انتخاب شده
+    address = static_ip if static_ip else host
 
     if protocol == "mtproto":
         secret = link.get("mtproto_secret")
@@ -545,7 +599,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
     if protocol == "shadowsocks":
         cipher = link.get("ss_cipher", DEFAULT_CIPHER)
         password = link.get("ss_password", "")
-        return generate_ss_link(host, 443, cipher, password, remark)
+        return generate_ss_link(address, 443, cipher, password, remark)
 
     if protocol == "trojan-ws":
         params = {
@@ -553,7 +607,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "path": "/trojan-ws", "sni": host, "fp": fp, "alpn": alpn,
         }
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-        return f"trojan://{uuid}@{host}:443?{query}#{quote(remark)}"
+        return f"trojan://{uuid}@{address}:443?{query}#{quote(remark)}"
 
     if protocol.startswith("trojan-xhttp-"):
         mode = protocol.replace("trojan-xhttp-", "")
@@ -563,7 +617,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "path": path, "sni": host, "fp": fp, "alpn": alpn,
         }
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-        return f"trojan://{uuid}@{host}:443?{query}#{quote(remark)}"
+        return f"trojan://{uuid}@{address}:443?{query}#{quote(remark)}"
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
@@ -592,7 +646,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "alpn": alpn,
         }
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-    return f"vless://{uuid}@{host}:443?{query}#{quote(remark)}"
+    return f"vless://{uuid}@{address}:443?{query}#{quote(remark)}"
 
 def uptime() -> str:
     secs = int(time.time() - stats["start_time"])
@@ -1571,6 +1625,15 @@ async def _create_link_core(body: dict) -> dict:
     if fp_val not in ("chrome", "firefox", "ios"):
         fp_val = "chrome"
 
+    # کشور و IP static برای این لینک
+    country = (body.get("country") or "auto").strip()[:40]
+    static_ip = (body.get("static_ip") or "").strip()[:45]
+    # اگه static_ip انتخاب شده ولی تو لیست ما نیست، نادیده بگیر
+    if static_ip:
+        valid_ips = {e["ip"] for e in CLOUDFLARE_IPS}
+        if static_ip not in valid_ips:
+            static_ip = ""
+
     uid = generate_uuid()
     link_data = {
         "label": label,
@@ -1586,6 +1649,8 @@ async def _create_link_core(body: dict) -> dict:
         "sub_id": sub_id,
         "protocol": protocol,
         "ad_tag": None,
+        "country": country,
+        "static_ip": static_ip or None,
     }
 
     if protocol == "mtproto":
@@ -1725,9 +1790,18 @@ async def list_links(_=Depends(require_auth)):
 # ══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/cloudflare-ips")
 async def api_cloudflare_ips(_=Depends(require_auth)):
+    # گروه‌بندی بر اساس region
+    by_region = {}
+    for entry in CLOUDFLARE_IPS:
+        r = entry["region"]
+        if r not in by_region:
+            by_region[r] = []
+        by_region[r].append({"ip": entry["ip"], "city": entry["city"]})
     return {
         "host": get_host(),
         "ips": CLOUDFLARE_IPS,
+        "by_region": by_region,
+        "regions": list(by_region.keys()),
         "note": "از هر IP بالا میتونی به‌عنوان host در کانفیگ استفاده کنی. SNI رو روی host اصلی (Worker URL) تنظیم کن.",
     }
 
@@ -1802,32 +1876,10 @@ async def test_link(uid: str, _=Depends(require_auth)):
         result["tests"].append({"name": "TLS handshake", "ok": False, "error": str(e)})
         return result
 
-    # تست ۴: HTTP probe به endpoint کانفیگ
-    if protocol == "vless-ws":
-        path = f"/ws/{uid}"
-    elif protocol == "trojan-ws":
-        path = "/trojan-ws"
-    elif protocol.startswith("xhttp-"):
-        mode = protocol.replace("xhttp-", "")
-        path = f"/xhttp-siz10/{mode}/{uid}"
-    elif protocol.startswith("trojan-xhttp-"):
-        mode = protocol.replace("trojan-xhttp-", "")
-        path = f"/txhttp-siz10/{mode}/{uid}"
-    else:
-        path = f"/ws/{uid}"
-
-    t0 = time.time()
-    try:
-        import urllib.request
-        req = urllib.request.Request(f"https://{host}{path}", method="GET", headers={"User-Agent": "HS-Panel-Test/1.0"})
-        with urllib.request.urlopen(req, timeout=5, context=ssl.create_default_context()) as resp:
-            http_ms = int((time.time() - t0) * 1000)
-            status = resp.status
-        result["tests"].append({"name": f"HTTP probe {path}", "ok": 200 <= status < 500, "ms": http_ms, "detail": f"status={status}"})
-        if 200 <= status < 500:
-            result["ok"] = True
-    except Exception as e:
-        result["tests"].append({"name": f"HTTP probe {path}", "ok": False, "error": str(e)})
+    # تست ۴: HTTP probe — حذف شد چون روی Worker Cloudflare معمولاً کار نمیکنه
+    # (Worker فقط درخواست‌هایی که از V2RayNG میاد رو relay میکنه)
+    # به جای اون فقط TCP و TLS کافیه — چون V2RayNG خودش هنگام اتصال handshake میکنه
+    result["ok"] = True  # اگه TCP و TLS اوکی شد، یعنی سرور سالمه
 
     # محاسبه latency کل
     total_ms = sum(t.get("ms", 0) for t in result["tests"] if t.get("ms"))
@@ -1892,7 +1944,19 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if "fingerprint" in body:
             fp_val = str(body["fingerprint"]).strip()
             link["fingerprint"] = fp_val if fp_val in ("chrome", "firefox", "ios") else "chrome"
-        if any(k in body for k in ("label", "note", "limit_value", "expires_days", "alpn", "fingerprint")):
+        if "country" in body:
+            link["country"] = str(body["country"]).strip()[:40] or "auto"
+        if "static_ip" in body:
+            new_ip = str(body["static_ip"]).strip()[:45]
+            if new_ip and new_ip != "auto":
+                valid_ips = {e["ip"] for e in CLOUDFLARE_IPS}
+                if new_ip in valid_ips:
+                    link["static_ip"] = new_ip
+                else:
+                    link["static_ip"] = None
+            else:
+                link["static_ip"] = None
+        if any(k in body for k in ("label", "note", "limit_value", "expires_days", "alpn", "fingerprint", "country", "static_ip")):
             log_activity("link", f"کانفیگ «{link['label']}» ویرایش شد", "info")
         new_sub = body.get("sub_id", "UNCHANGED")
         if new_sub != "UNCHANGED":

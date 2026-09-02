@@ -720,7 +720,7 @@ tbody tr:hover{background:var(--hs-purple-d)}
           </div>
           <div class="tbl-scroll">
             <table id="links-tbl">
-              <thead><tr><th>نام</th><th>پروتکل</th><th>ترافیک</th><th>سهمیه</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+              <thead><tr><th>نام</th><th>پروتکل</th><th>ترافیک</th><th>سهمیه</th><th>کشور/IP</th><th>وضعیت</th><th>عملیات</th></tr></thead>
               <tbody><tr><td colspan="6" class="empty">در حال بارگذاری...</td></tr></tbody>
             </table>
           </div>
@@ -821,6 +821,24 @@ tbody tr:hover{background:var(--hs-purple-d)}
           <option value="mtproto">MTProto (Telegram)</option>
         </select>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>کشور</label>
+          <select id="cl-country" onchange="populateStaticIPSelect()">
+            <option value="auto">خودکار</option>
+            <option value="US">آمریکا 🇺🇸</option>
+            <option value="EU">اروپا 🇪🇺</option>
+            <option value="ASIA">آسیا 🌏</option>
+            <option value="OC">اقیانوسیه 🌊</option>
+            <option value="SA">آمریکا جنوبی 🌎</option>
+            <option value="AF">آفریقا 🌍</option>
+          </select>
+        </div>
+        <div class="field"><label>IP Static</label>
+          <select id="cl-static-ip">
+            <option value="">خودکار (پیش‌فرض)</option>
+          </select>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 80px;gap:10px">
         <div class="field"><label>سهمیه ترافیک</label><input type="number" id="cl-val" min="0" placeholder="0 = نامحدود"></div>
         <div class="field"><label>واحد</label><select id="cl-unit"><option>GB</option><option selected>MB</option></select></div>
@@ -831,6 +849,49 @@ tbody tr:hover{background:var(--hs-purple-d)}
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal('modal-create-link')">انصراف</button>
       <button class="btn btn-primary" onclick="createLink()"><i class="ti ti-check"></i> ساخت کانفیگ</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT LINK MODAL -->
+<div class="modal-bg" id="modal-edit-link">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-icon"><i class="ti ti-edit"></i></div>
+      <div><div class="modal-title">ویرایش کانفیگ</div><div class="modal-sub">تغییر حجم، زمان، کشور یا IP</div></div>
+      <button class="modal-close" onclick="closeModal('modal-edit-link')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="el-uid">
+      <div class="field"><label>نام کانفیگ</label><input type="text" id="el-label" placeholder="نام"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>کشور</label>
+          <select id="el-country" onchange="populateEditStaticIP()">
+            <option value="auto">خودکار</option>
+            <option value="US">آمریکا 🇺🇸</option>
+            <option value="EU">اروپا 🇪🇺</option>
+            <option value="ASIA">آسیا 🌏</option>
+            <option value="OC">اقیانوسیه 🌊</option>
+            <option value="SA">آمریکا جنوبی 🌎</option>
+            <option value="AF">آفریقا 🌍</option>
+          </select>
+        </div>
+        <div class="field"><label>IP Static</label>
+          <select id="el-static-ip">
+            <option value="">خودکار (پیش‌فرض)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:10px">
+        <div class="field"><label>سهمیه ترافیک</label><input type="number" id="el-val" min="0" placeholder="0 = نامحدود"></div>
+        <div class="field"><label>واحد</label><select id="el-unit"><option>GB</option><option>MB</option></select></div>
+      </div>
+      <div class="field"><label>تمدید مدت اعتبار (روز از الان)</label><input type="number" id="el-exp" min="0" placeholder="0 = نامحدود / خالی = بدون تغییر"><input type="hidden" id="el-exp-orig"></div>
+      <div class="field"><label>یادداشت</label><textarea id="el-note" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-link')">انصراف</button>
+      <button class="btn btn-primary" onclick="saveEdit()"><i class="ti ti-check"></i> ذخیره</button>
     </div>
   </div>
 </div>
@@ -916,7 +977,13 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('o
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
 
 /* ════ MODAL ════ */
-function openModal(id){ document.getElementById(id).classList.add('open'); }
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  // اگه modal ساخت کانفیگه، لیست IP Static رو پر کن
+  if (id === 'modal-create-link') {
+    populateStaticIPSelect();
+  }
+}
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); }));
 
@@ -992,8 +1059,9 @@ async function loadLinks(){
         '<td><span class="badge badge-purple">' + (l.protocol||'') + '</span></td>' +
         '<td><div class="cell-mono">' + fmtBytes(used) + '</div>' + (lim>0 ? '<div style="height:3px;background:var(--hs-border2);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--hs-purple),var(--hs-violet))"></div></div>' : '') + '</td>' +
         '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
+        '<td><div style="font-size:11px"><div>' + (l.country && l.country!=='auto' ? l.country : '🌐 Auto') + '</div>' + (l.static_ip ? '<div style="color:var(--hs-purple);font-family:monospace">' + l.static_ip + '</div>' : '') + '</div></td>' +
         '<td>' + (l.expired ? '<span class="badge badge-red badge-dot">منقضی</span>' : l.active===false ? '<span class="badge badge-amber badge-dot">غیرفعال</span>' : '<span class="badge badge-green badge-dot">فعال</span>') + '</td>' +
-        '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="testLink(\'' + l.uuid + '\')" title="تست/پینگ"><i class="ti ti-bolt"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
+        '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="testLink(\'' + l.uuid + '\')" title="تست/پینگ"><i class="ti ti-bolt"></i></button><button class="btn btn-ghost btn-sm" onclick="editLink(\'' + l.uuid + '\')" title="ویرایش"><i class="ti ti-edit"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
     }).join('');
   } catch(e){ showToast('خطا در بارگذاری کانفیگ‌ها','error'); }
 }
@@ -1022,6 +1090,8 @@ async function createLink(){
     limit_unit: document.getElementById('cl-unit').value,
     expires_days: parseInt(document.getElementById('cl-exp').value) || 0,
     note: document.getElementById('cl-note').value || '',
+    country: document.getElementById('cl-country').value || 'auto',
+    static_ip: document.getElementById('cl-static-ip').value || '',
   };
   try {
     const r = await fetch('/api/links', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
@@ -1087,14 +1157,21 @@ async function showCloudflareIPs(){
   try {
     const r = await fetch('/api/cloudflare-ips');
     const d = await r.json();
+    // پر کردن dropdown داخل modal
+    populateStaticIPSelect(d);
     let html = '<div style="text-align:right;direction:rtl;min-width:360px;max-height:400px;overflow-y:auto">';
     html += '<div style="font-weight:600;margin-bottom:6px;color:var(--hs-purple)">🌐 IP های Static (Cloudflare)</div>';
     html += '<div style="font-size:11px;color:var(--hs-text2);margin-bottom:10px">Host: ' + d.host + '<br>اگه DNS فیلتره، این IP ها رو مستقیم تو کانفیگ بذار. SNI = host.</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:monospace;font-size:11px">';
-    d.ips.forEach(ip => {
-      html += '<div style="padding:4px 8px;background:rgba(124,92,231,.1);border-radius:4px;cursor:pointer" onclick="navigator.clipboard.writeText(\'' + ip + '\');showToast(\'کپی شد: ' + ip + '\',\'success\',2000)">' + ip + '</div>';
+    // گروه‌بندی بر اساس region
+    Object.keys(d.by_region).forEach(region => {
+      html += '<div style="margin-top:8px;font-weight:600;color:var(--hs-purple)">' + region + '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:monospace;font-size:11px;margin-top:4px">';
+      d.by_region[region].forEach(item => {
+        html += '<div style="padding:6px 8px;background:rgba(124,92,231,.1);border-radius:4px;cursor:pointer" title="' + item.city + '" onclick="navigator.clipboard.writeText(\'' + item.ip + '\');showToast(\'کپی شد: ' + item.ip + ' (' + item.city + ')\',\'success\',2000)"><div>' + item.ip + '</div><div style="font-size:9px;color:var(--hs-text2)">' + item.city + '</div></div>';
+      });
+      html += '</div>';
     });
-    html += '</div></div>';
+    html += '</div>';
     showToast(html, 'info', 30000);
   } catch(e){
     showToast('خطا: ' + e.message, 'error');
@@ -1102,6 +1179,110 @@ async function showCloudflareIPs(){
     btn.innerHTML = orig;
     btn.disabled = false;
   }
+}
+
+async function populateStaticIPSelect(){
+  try {
+    const r = await fetch('/api/cloudflare-ips');
+    const d = await r.json();
+    const sel = document.getElementById('cl-static-ip');
+    if (!sel) return;
+    const selCountry = document.getElementById('cl-country');
+    const currentRegion = selCountry ? selCountry.value : 'auto';
+    sel.innerHTML = '<option value="">خودکار (پیش‌فرض)</option>';
+    d.ips.forEach(item => {
+      if (currentRegion === 'auto' || item.region === currentRegion) {
+        const opt = document.createElement('option');
+        opt.value = item.ip;
+        opt.textContent = item.ip + ' (' + item.city + ')';
+        sel.appendChild(opt);
+      }
+    });
+  } catch(e){}
+}
+
+let _editIPCache = null;
+async function populateEditStaticIP(){
+  try {
+    if (!_editIPCache) {
+      const r = await fetch('/api/cloudflare-ips');
+      _editIPCache = await r.json();
+    }
+    const d = _editIPCache;
+    const sel = document.getElementById('el-static-ip');
+    if (!sel) return;
+    const selCountry = document.getElementById('el-country');
+    const currentRegion = selCountry ? selCountry.value : 'auto';
+    const currentVal = sel.dataset.current || '';
+    sel.innerHTML = '<option value="">خودکار (پیش‌فرض)</option>';
+    d.ips.forEach(item => {
+      if (currentRegion === 'auto' || item.region === currentRegion) {
+        const opt = document.createElement('option');
+        opt.value = item.ip;
+        opt.textContent = item.ip + ' (' + item.city + ')';
+        if (item.ip === currentVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    });
+  } catch(e){}
+}
+
+async function editLink(uid){
+  try {
+    const r = await fetch('/api/links');
+    const d = await r.json();
+    const l = (d.links||[]).find(x => x.uuid === uid);
+    if (!l) { showToast('کانفیگ پیدا نشد','error'); return; }
+    document.getElementById('el-uid').value = uid;
+    document.getElementById('el-label').value = l.label || '';
+    document.getElementById('el-country').value = l.country || 'auto';
+    // اگه limit_bytes > 0، به GB یا MB تبدیل کن
+    const lb = l.limit_bytes || 0;
+    if (lb > 0) {
+      if (lb >= 1024*1024*1024) {
+        document.getElementById('el-val').value = (lb / 1024 / 1024 / 1024).toFixed(2);
+        document.getElementById('el-unit').value = 'GB';
+      } else {
+        document.getElementById('el-val').value = (lb / 1024 / 1024).toFixed(2);
+        document.getElementById('el-unit').value = 'MB';
+      }
+    } else {
+      document.getElementById('el-val').value = 0;
+      document.getElementById('el-unit').value = 'GB';
+    }
+    document.getElementById('el-exp').value = '';
+    document.getElementById('el-exp-orig').value = l.expires_at || '';
+    document.getElementById('el-note').value = l.note || '';
+    const elStatic = document.getElementById('el-static-ip');
+    elStatic.dataset.current = l.static_ip || '';
+    await populateEditStaticIP();
+    openModal('modal-edit-link');
+  } catch(e){ showToast('خطا: ' + e.message,'error'); }
+}
+
+async function saveEdit(){
+  const uid = document.getElementById('el-uid').value;
+  const expVal = document.getElementById('el-exp').value;
+  const body = {
+    label: document.getElementById('el-label').value,
+    country: document.getElementById('el-country').value,
+    static_ip: document.getElementById('el-static-ip').value,
+    limit_value: parseFloat(document.getElementById('el-val').value) || 0,
+    limit_unit: document.getElementById('el-unit').value,
+    note: document.getElementById('el-note').value,
+  };
+  // expires_days فقط اگه کاربر پر کرده بفرست
+  if (expVal !== '' && expVal !== null) {
+    body.expires_days = parseInt(expVal) || 0;
+  }
+  try {
+    const r = await fetch('/api/links/' + uid, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
+    closeModal('modal-edit-link');
+    showToast('کانفیگ با موفقیت ویرایش شد','success');
+    loadLinks();
+    loadStats();
+  } catch(e){ showToast(e.message,'error'); }
 }
 
 async function toggleLink(uid, currentActive){
