@@ -86,70 +86,97 @@ SAVE_LOCK = asyncio.Lock()
 
 # Cloudflare IP های پایدار — برای مواقعی که DNS تحریم/فیلتر باشه، کلاینت بتونه
 # مستقیم با IP وصل بشه. Worker به هر IP‌ای از این لیست میتونه وصل بشه.
-# هر IP به یک region (لوکیشن Cloudflare) متصله
+# هر IP به یک کشور + شهر متصله
 CLOUDFLARE_IPS = [
-    {"ip": "104.16.0.0", "region": "US", "city": "San Francisco"},
-    {"ip": "104.17.0.0", "region": "US", "city": "San Francisco"},
-    {"ip": "104.18.0.0", "region": "US", "city": "Los Angeles"},
-    {"ip": "104.19.0.0", "region": "US", "city": "Chicago"},
-    {"ip": "104.20.0.0", "region": "US", "city": "New York"},
-    {"ip": "104.21.0.0", "region": "US", "city": "Miami"},
-    {"ip": "104.22.0.0", "region": "US", "city": "Seattle"},
-    {"ip": "104.23.0.0", "region": "US", "city": "Dallas"},
-    {"ip": "104.24.0.0", "region": "US", "city": "Atlanta"},
-    {"ip": "104.25.0.0", "region": "US", "city": "Boston"},
-    {"ip": "104.26.0.0", "region": "EU", "city": "London"},
-    {"ip": "104.27.0.0", "region": "EU", "city": "Paris"},
-    {"ip": "172.64.0.0", "region": "EU", "city": "Amsterdam"},
-    {"ip": "172.65.0.0", "region": "EU", "city": "Frankfurt"},
-    {"ip": "172.66.0.0", "region": "EU", "city": "Madrid"},
-    {"ip": "172.67.0.0", "region": "EU", "city": "Rome"},
-    {"ip": "188.114.96.0", "region": "EU", "city": "Stockholm"},
-    {"ip": "188.114.97.0", "region": "EU", "city": "Helsinki"},
-    {"ip": "188.114.98.0", "region": "EU", "city": "Warsaw"},
-    {"ip": "188.114.99.0", "region": "EU", "city": "Vienna"},
-    {"ip": "162.158.0.0", "region": "ASIA", "city": "Tokyo"},
-    {"ip": "162.159.0.0", "region": "ASIA", "city": "Singapore"},
-    {"ip": "141.101.64.0", "region": "ASIA", "city": "Hong Kong"},
-    {"ip": "141.101.65.0", "region": "ASIA", "city": "Seoul"},
-    {"ip": "141.101.66.0", "region": "ASIA", "city": "Mumbai"},
-    {"ip": "141.101.67.0", "region": "ASIA", "city": "Bangkok"},
-    {"ip": "141.101.68.0", "region": "ASIA", "city": "Jakarta"},
-    {"ip": "141.101.69.0", "region": "ASIA", "city": "Manila"},
-    {"ip": "141.101.70.0", "region": "ASIA", "city": "Kuala Lumpur"},
-    {"ip": "141.101.71.0", "region": "ASIA", "city": "Taipei"},
-    {"ip": "190.93.240.0", "region": "ASIA", "city": "Dubai"},
-    {"ip": "190.93.241.0", "region": "ASIA", "city": "Istanbul"},
-    {"ip": "190.93.242.0", "region": "EU", "city": "Athens"},
-    {"ip": "190.93.243.0", "region": "EU", "city": "Lisbon"},
-    {"ip": "190.93.244.0", "region": "EU", "city": "Dublin"},
-    {"ip": "190.93.245.0", "region": "EU", "city": "Copenhagen"},
-    {"ip": "190.93.246.0", "region": "EU", "city": "Oslo"},
-    {"ip": "190.93.247.0", "region": "EU", "city": "Zurich"},
-    {"ip": "190.93.248.0", "region": "EU", "city": "Brussels"},
-    {"ip": "190.93.249.0", "region": "EU", "city": "Prague"},
-    {"ip": "190.93.250.0", "region": "EU", "city": "Budapest"},
-    {"ip": "190.93.251.0", "region": "OC", "city": "Sydney"},
-    {"ip": "190.93.252.0", "region": "OC", "city": "Melbourne"},
-    {"ip": "190.93.253.0", "region": "OC", "city": "Auckland"},
-    {"ip": "190.93.254.0", "region": "SA", "city": "São Paulo"},
-    {"ip": "190.93.255.0", "region": "SA", "city": "Buenos Aires"},
-    {"ip": "197.234.240.0", "region": "AF", "city": "Johannesburg"},
-    {"ip": "197.234.241.0", "region": "AF", "city": "Cairo"},
-    {"ip": "197.234.242.0", "region": "AF", "city": "Nairobi"},
-    {"ip": "197.234.243.0", "region": "AF", "city": "Lagos"},
-    {"ip": "197.234.244.0", "region": "AF", "city": "Casablanca"},
-    {"ip": "197.234.245.0", "region": "EU", "city": "Reykjavik"},
-    {"ip": "197.234.246.0", "region": "EU", "city": "Tallinn"},
-    {"ip": "197.234.247.0", "region": "EU", "city": "Riga"},
-    {"ip": "197.234.248.0", "region": "EU", "city": "Vilnius"},
-    {"ip": "197.234.249.0", "region": "EU", "city": "Ljubljana"},
-    {"ip": "197.234.250.0", "region": "EU", "city": "Bratislava"},
-    {"ip": "197.234.251.0", "region": "EU", "city": "Luxembourg"},
-    {"ip": "197.234.252.0", "region": "EU", "city": "Monaco"},
-    {"ip": "197.234.253.0", "region": "EU", "city": "Valletta"},
-    {"ip": "197.234.254.0", "region": "EU", "city": "Nicosia"},
-    {"ip": "197.234.255.0", "region": "EU", "city": "Andorra"},
+    # 🇺🇸 آمریکا (1)
+    {"ip": "104.20.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "New York"},
+    {"ip": "104.21.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Miami"},
+    {"ip": "104.22.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Seattle"},
+    {"ip": "104.23.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Dallas"},
+    {"ip": "104.24.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Atlanta"},
+    {"ip": "104.25.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Boston"},
+    {"ip": "104.16.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "San Francisco"},
+    {"ip": "104.17.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Los Angeles"},
+    {"ip": "104.18.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Chicago"},
+    {"ip": "104.19.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "New Jersey"},
+    # 🇩🇪 آلمان
+    {"ip": "172.65.0.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Frankfurt"},
+    {"ip": "188.114.98.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Berlin"},
+    {"ip": "197.234.246.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Munich"},
+    # 🇫🇷 فرانسه
+    {"ip": "104.27.0.0", "country": "FR", "country_name": "🇫🇷 France", "city": "Paris"},
+    {"ip": "197.234.248.0", "country": "FR", "country_name": "🇫🇷 France", "city": "Marseille"},
+    # 🇬🇧 انگلیس
+    {"ip": "104.26.0.0", "country": "GB", "country_name": "🇬🇧 United Kingdom", "city": "London"},
+    {"ip": "190.93.244.0", "country": "GB", "country_name": "🇬🇧 United Kingdom", "city": "Manchester"},
+    # 🇳🇱 هلند
+    {"ip": "172.64.0.0", "country": "NL", "country_name": "🇳🇱 Netherlands", "city": "Amsterdam"},
+    {"ip": "197.234.250.0", "country": "NL", "country_name": "🇳🇱 Netherlands", "city": "Rotterdam"},
+    # 🇮🇹 ایتالیا
+    {"ip": "172.67.0.0", "country": "IT", "country_name": "🇮🇹 Italy", "city": "Rome"},
+    {"ip": "190.93.242.0", "country": "IT", "country_name": "🇮🇹 Italy", "city": "Milan"},
+    # 🇪🇸 اسپانیا
+    {"ip": "172.66.0.0", "country": "ES", "country_name": "🇪🇸 Spain", "city": "Madrid"},
+    {"ip": "190.93.243.0", "country": "ES", "country_name": "🇪🇸 Spain", "city": "Barcelona"},
+    # 🇸🇪 سوئد
+    {"ip": "188.114.96.0", "country": "SE", "country_name": "🇸🇪 Sweden", "city": "Stockholm"},
+    {"ip": "197.234.245.0", "country": "SE", "country_name": "🇸🇪 Sweden", "city": "Gothenburg"},
+    # 🇫🇮 فنلاند
+    {"ip": "188.114.97.0", "country": "FI", "country_name": "🇫🇮 Finland", "city": "Helsinki"},
+    # 🇵🇱 لهستان
+    {"ip": "188.114.99.0", "country": "PL", "country_name": "🇵🇱 Poland", "city": "Warsaw"},
+    # 🇨🇭 سوئیس
+    {"ip": "190.93.247.0", "country": "CH", "country_name": "🇨🇭 Switzerland", "city": "Zurich"},
+    # 🇦🇹 اتریش
+    {"ip": "197.234.251.0", "country": "AT", "country_name": "🇦🇹 Austria", "city": "Vienna"},
+    # 🇧🇪 بلژیک
+    {"ip": "190.93.248.0", "country": "BE", "country_name": "🇧🇪 Belgium", "city": "Brussels"},
+    # 🇨🇿 چک
+    {"ip": "190.93.249.0", "country": "CZ", "country_name": "🇨🇿 Czech Republic", "city": "Prague"},
+    # 🇩🇰 دانمارک
+    {"ip": "190.93.245.0", "country": "DK", "country_name": "🇩🇰 Denmark", "city": "Copenhagen"},
+    # 🇳🇴 نروژ
+    {"ip": "190.93.246.0", "country": "NO", "country_name": "🇳🇴 Norway", "city": "Oslo"},
+    # 🇮🇪 ایرلند
+    {"ip": "197.234.247.0", "country": "IE", "country_name": "🇮🇪 Ireland", "city": "Dublin"},
+    # 🇵🇹 پرتغال
+    {"ip": "197.234.249.0", "country": "PT", "country_name": "🇵🇹 Portugal", "city": "Lisbon"},
+    # 🇹🇷 ترکیه (آسیا-اروپا)
+    {"ip": "190.93.241.0", "country": "TR", "country_name": "🇹🇷 Turkey", "city": "Istanbul"},
+    # 🇦🇪 امارات (آسیا)
+    {"ip": "190.93.240.0", "country": "AE", "country_name": "🇦🇪 UAE", "city": "Dubai"},
+    # 🇯🇵 ژاپن (آسیا)
+    {"ip": "162.158.0.0", "country": "JP", "country_name": "🇯🇵 Japan", "city": "Tokyo"},
+    {"ip": "141.101.71.0", "country": "JP", "country_name": "🇯🇵 Japan", "city": "Osaka"},
+    # 🇸🇬 سنگاپور (آسیا)
+    {"ip": "162.159.0.0", "country": "SG", "country_name": "🇸🇬 Singapore", "city": "Singapore"},
+    # 🇰🇷 کره جنوبی (آسیا)
+    {"ip": "141.101.65.0", "country": "KR", "country_name": "🇰🇷 South Korea", "city": "Seoul"},
+    # 🇭🇰 هنگ کنگ (آسیا)
+    {"ip": "141.101.64.0", "country": "HK", "country_name": "🇭🇰 Hong Kong", "city": "Hong Kong"},
+    # 🇮🇳 هند (آسیا)
+    {"ip": "141.101.66.0", "country": "IN", "country_name": "🇮🇳 India", "city": "Mumbai"},
+    # بقیه برای backwards compat
+    {"ip": "190.93.250.0", "country": "HU", "country_name": "🇭🇺 Hungary", "city": "Budapest"},
+    {"ip": "190.93.251.0", "country": "AU", "country_name": "🇦🇺 Australia", "city": "Sydney"},
+    {"ip": "190.93.252.0", "country": "AU", "country_name": "🇦🇺 Australia", "city": "Melbourne"},
+    {"ip": "190.93.253.0", "country": "NZ", "country_name": "🇳🇿 New Zealand", "city": "Auckland"},
+    {"ip": "190.93.254.0", "country": "BR", "country_name": "🇧🇷 Brazil", "city": "São Paulo"},
+    {"ip": "190.93.255.0", "country": "AR", "country_name": "🇦🇷 Argentina", "city": "Buenos Aires"},
+    {"ip": "197.234.240.0", "country": "ZA", "country_name": "🇿🇦 South Africa", "city": "Johannesburg"},
+    {"ip": "197.234.241.0", "country": "EG", "country_name": "🇪🇬 Egypt", "city": "Cairo"},
+    {"ip": "197.234.242.0", "country": "KE", "country_name": "🇰🇪 Kenya", "city": "Nairobi"},
+    {"ip": "197.234.243.0", "country": "NG", "country_name": "🇳🇬 Nigeria", "city": "Lagos"},
+    {"ip": "197.234.244.0", "country": "MA", "country_name": "🇲🇦 Morocco", "city": "Casablanca"},
+    {"ip": "197.234.252.0", "country": "MC", "country_name": "🇲🇨 Monaco", "city": "Monaco"},
+    {"ip": "197.234.253.0", "country": "MT", "country_name": "🇲🇹 Malta", "city": "Valletta"},
+    {"ip": "197.234.254.0", "country": "CY", "country_name": "🇨🇾 Cyprus", "city": "Nicosia"},
+    {"ip": "197.234.255.0", "country": "AD", "country_name": "🇦🇩 Andorra", "city": "Andorra"},
+    {"ip": "141.101.67.0", "country": "TH", "country_name": "🇹🇭 Thailand", "city": "Bangkok"},
+    {"ip": "141.101.68.0", "country": "ID", "country_name": "🇮🇩 Indonesia", "city": "Jakarta"},
+    {"ip": "141.101.69.0", "country": "PH", "country_name": "🇵🇭 Philippines", "city": "Manila"},
+    {"ip": "141.101.70.0", "country": "MY", "country_name": "🇲🇾 Malaysia", "city": "Kuala Lumpur"},
+    {"ip": "172.64.100.0", "country": "TW", "country_name": "🇹🇼 Taiwan", "city": "Taipei"},
 ]
 
 
@@ -578,6 +605,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
     static_ip = link.get("static_ip")
     # host (که در share link به عنوان address میره) = IP static اگه انتخاب شده
     address = static_ip if static_ip else host
+    port = link.get("port", 443)
 
     if protocol == "mtproto":
         secret = link.get("mtproto_secret")
@@ -599,7 +627,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
     if protocol == "shadowsocks":
         cipher = link.get("ss_cipher", DEFAULT_CIPHER)
         password = link.get("ss_password", "")
-        return generate_ss_link(address, 443, cipher, password, remark)
+        return generate_ss_link(address, port, cipher, password, remark)
 
     if protocol == "trojan-ws":
         params = {
@@ -607,7 +635,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "path": "/trojan-ws", "sni": host, "fp": fp, "alpn": alpn,
         }
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-        return f"trojan://{uuid}@{address}:443?{query}#{quote(remark)}"
+        return f"trojan://{uuid}@{address}:{port}?{query}#{quote(remark)}"
 
     if protocol.startswith("trojan-xhttp-"):
         mode = protocol.replace("trojan-xhttp-", "")
@@ -617,7 +645,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "path": path, "sni": host, "fp": fp, "alpn": alpn,
         }
         query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-        return f"trojan://{uuid}@{address}:443?{query}#{quote(remark)}"
+        return f"trojan://{uuid}@{address}:{port}?{query}#{quote(remark)}"
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
@@ -646,7 +674,7 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
             "alpn": alpn,
         }
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
-    return f"vless://{uuid}@{address}:443?{query}#{quote(remark)}"
+    return f"vless://{uuid}@{address}:{port}?{query}#{quote(remark)}"
 
 def uptime() -> str:
     secs = int(time.time() - stats["start_time"])
@@ -1634,6 +1662,17 @@ async def _create_link_core(body: dict) -> dict:
         if static_ip not in valid_ips:
             static_ip = ""
 
+    ip_version = (body.get("ip_version") or "ipv4").strip().lower()
+    if ip_version not in ("ipv4", "ipv6"):
+        ip_version = "ipv4"
+
+    try:
+        port = int(body.get("port") or 443)
+        if not (1 <= port <= 65535):
+            port = 443
+    except (TypeError, ValueError):
+        port = 443
+
     uid = generate_uuid()
     link_data = {
         "label": label,
@@ -1651,6 +1690,8 @@ async def _create_link_core(body: dict) -> dict:
         "ad_tag": None,
         "country": country,
         "static_ip": static_ip or None,
+        "ip_version": ip_version,
+        "port": port,
     }
 
     if protocol == "mtproto":
@@ -1790,20 +1831,49 @@ async def list_links(_=Depends(require_auth)):
 # ══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/cloudflare-ips")
 async def api_cloudflare_ips(_=Depends(require_auth)):
-    # گروه‌بندی بر اساس region
-    by_region = {}
+    # گروه‌بندی بر اساس کشور
+    by_country = {}
     for entry in CLOUDFLARE_IPS:
-        r = entry["region"]
-        if r not in by_region:
-            by_region[r] = []
-        by_region[r].append({"ip": entry["ip"], "city": entry["city"]})
+        c = entry["country"]
+        if c not in by_country:
+            by_country[c] = {"name": entry["country_name"], "ips": []}
+        by_country[c]["ips"].append({"ip": entry["ip"], "city": entry["city"]})
     return {
         "host": get_host(),
         "ips": CLOUDFLARE_IPS,
-        "by_region": by_region,
-        "regions": list(by_region.keys()),
+        "by_country": by_country,
+        "countries": [{"code": c, "name": by_country[c]["name"]} for c in by_country.keys()],
         "note": "از هر IP بالا میتونی به‌عنوان host در کانفیگ استفاده کنی. SNI رو روی host اصلی (Worker URL) تنظیم کن.",
     }
+
+
+@app.get("/api/cloudflare-ips/speedtest")
+async def api_cloudflare_speedtest(country: str = None, _=Depends(require_auth)):
+    """
+    همه IP های یک کشور (یا همه) رو تست میکنه و سریع‌ترین رو برمیگردونه.
+    """
+    import socket
+    import time as _time
+    ips_to_test = [e["ip"] for e in CLOUDFLARE_IPS if not country or e["country"] == country]
+    if not ips_to_test:
+        return {"error": "no ips found", "results": []}
+
+    results = []
+    # فقط 8 تای اول رو تست کن (سرعت)
+    for ip in ips_to_test[:8]:
+        try:
+            t0 = _time.time()
+            sock = socket.create_connection((ip, 443), timeout=3)
+            sock.close()
+            ms = int((_time.time() - t0) * 1000)
+            results.append({"ip": ip, "ms": ms, "ok": True})
+        except Exception as e:
+            results.append({"ip": ip, "ok": False, "error": str(e)[:50]})
+
+    # sort by ms
+    results.sort(key=lambda x: (not x.get("ok", False), x.get("ms", 99999)))
+    fastest = next((r["ip"] for r in results if r.get("ok")), None)
+    return {"fastest": fastest, "results": results}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1956,7 +2026,18 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
                     link["static_ip"] = None
             else:
                 link["static_ip"] = None
-        if any(k in body for k in ("label", "note", "limit_value", "expires_days", "alpn", "fingerprint", "country", "static_ip")):
+        if "ip_version" in body:
+            iv = str(body["ip_version"]).strip().lower()
+            if iv in ("ipv4", "ipv6"):
+                link["ip_version"] = iv
+        if "port" in body:
+            try:
+                p = int(body["port"])
+                if 1 <= p <= 65535:
+                    link["port"] = p
+            except (TypeError, ValueError):
+                pass
+        if any(k in body for k in ("label", "note", "limit_value", "expires_days", "alpn", "fingerprint", "country", "static_ip", "ip_version", "port")):
             log_activity("link", f"کانفیگ «{link['label']}» ویرایش شد", "info")
         new_sub = body.get("sub_id", "UNCHANGED")
         if new_sub != "UNCHANGED":

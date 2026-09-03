@@ -502,15 +502,20 @@ tbody tr:hover{background:var(--hs-purple-d)}
 
 /* ── TOAST ────────────────────────────────────────────── */
 .toast-host{position:fixed;top:78px;left:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{background:var(--hs-card-solid);border:1px solid var(--hs-border);border-radius:11px;padding:12px 16px 12px 14px;
-  display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--hs-text);min-width:240px;max-width:360px;
+.toast{background:var(--hs-card-solid);border:1px solid var(--hs-border);border-radius:11px;padding:11px 14px 11px 13px;
+  display:flex;align-items:center;gap:11px;font-size:12.5px;color:var(--hs-text);min-width:240px;max-width:360px;
   box-shadow:0 14px 32px -8px rgba(0,0,0,.3);pointer-events:auto;animation:toastIn .35s cubic-bezier(.16,1,.3,1);backdrop-filter:blur(20px)}
 .toast.exit{animation:toastOut .25s ease forwards}
-.toast i{font-size:18px;flex-shrink:0}
-.toast.success{border-color:rgba(52,211,153,.3)}.toast.success i{color:var(--hs-success)}
-.toast.error{border-color:rgba(251,113,133,.3)}.toast.error i{color:var(--hs-danger)}
-.toast.info i{color:var(--hs-info)}
-.toast.warn i{color:var(--hs-warn)}
+.toast-icon{font-size:20px;flex-shrink:0}
+.toast-msg{flex:1;line-height:1.45}
+.toast-close{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:7px;color:var(--hs-mid);
+  cursor:pointer;font-size:14px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  transition:.2s;flex-shrink:0;padding:0}
+.toast-close:hover{background:rgba(255,255,255,.14);color:var(--hs-text)}
+.toast.success{border-color:rgba(52,211,153,.35)}.toast.success .toast-icon{color:var(--hs-success)}
+.toast.error{border-color:rgba(251,113,133,.35)}.toast.error .toast-icon{color:var(--hs-danger)}
+.toast.info .toast-icon{color:var(--hs-info)}
+.toast.warn .toast-icon{color:var(--hs-warn)}
 @keyframes toastIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
 @keyframes toastOut{to{opacity:0;transform:translateX(-20px)}}
 
@@ -714,14 +719,15 @@ tbody tr:hover{background:var(--hs-purple-d)}
           <div class="tbl-head">
             <div class="tbl-title"><i class="ti ti-list"></i> لیست کانفیگ‌ها</div>
             <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-ghost btn-sm" onclick="showCloudflareIPs()" title="IP های Static"><i class="ti ti-world"></i> IP Static</button>
+              <button class="btn btn-ghost btn-sm" onclick="testAllLinks()" style="color:var(--hs-success);border-color:rgba(52,211,153,.25);background:rgba(52,211,153,.06)" title="تست سریع همه کانفیگ‌ها"><i class="ti ti-bolt"></i> تست همه</button>
+              <button class="btn btn-ghost btn-sm" onclick="showCloudflareIPs()" style="color:var(--hs-purple2);border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.06)" title="IP های Static"><i class="ti ti-world"></i> IP Static</button>
               <input type="text" placeholder="جستجو..." style="padding:7px 12px;border-radius:8px;border:1px solid var(--hs-border2);background:rgba(0,0,0,.18);color:var(--hs-text);font-family:inherit;font-size:12px;outline:none" oninput="filterLinks(this.value)">
             </div>
           </div>
           <div class="tbl-scroll">
             <table id="links-tbl">
-              <thead><tr><th>نام</th><th>پروتکل</th><th>ترافیک</th><th>سهمیه</th><th>کشور/IP</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-              <tbody><tr><td colspan="6" class="empty">در حال بارگذاری...</td></tr></tbody>
+              <thead><tr><th>نام</th><th>پروتکل</th><th>ترافیک</th><th>سهمیه</th><th>کشور/IP</th><th>وضعیت</th><th>زمان</th><th>عملیات</th></tr></thead>
+              <tbody><tr><td colspan="8" class="empty">در حال بارگذاری...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -824,18 +830,47 @@ tbody tr:hover{background:var(--hs-purple-d)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>کشور</label>
           <select id="cl-country" onchange="populateStaticIPSelect()">
-            <option value="auto">خودکار</option>
-            <option value="US">آمریکا 🇺🇸</option>
-            <option value="EU">اروپا 🇪🇺</option>
-            <option value="ASIA">آسیا 🌏</option>
-            <option value="OC">اقیانوسیه 🌊</option>
-            <option value="SA">آمریکا جنوبی 🌎</option>
-            <option value="AF">آفریقا 🌍</option>
+            <option value="auto">🌐 خودکار (سریع‌ترین)</option>
+            <option value="US">🇺🇸 United States</option>
+            <option value="DE">🇩🇪 Germany</option>
+            <option value="FR">🇫🇷 France</option>
+            <option value="GB">🇬🇧 United Kingdom</option>
+            <option value="NL">🇳🇱 Netherlands</option>
+            <option value="IT">🇮🇹 Italy</option>
+            <option value="ES">🇪🇸 Spain</option>
+            <option value="SE">🇸🇪 Sweden</option>
+            <option value="FI">🇫🇮 Finland</option>
+            <option value="PL">🇵🇱 Poland</option>
+            <option value="CH">🇨🇭 Switzerland</option>
+            <option value="AT">🇦🇹 Austria</option>
+            <option value="TR">🇹🇷 Turkey</option>
+            <option value="AE">🇦🇪 UAE</option>
+            <option value="JP">🇯🇵 Japan</option>
+            <option value="SG">🇸🇬 Singapore</option>
+            <option value="KR">🇰🇷 South Korea</option>
+            <option value="HK">🇭🇰 Hong Kong</option>
           </select>
         </div>
         <div class="field"><label>IP Static</label>
           <select id="cl-static-ip">
-            <option value="">خودکار (پیش‌فرض)</option>
+            <option value="">⚡ خودکار (سریع‌ترین)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>IP Version</label>
+          <select id="cl-ipver">
+            <option value="ipv4">IPv4</option>
+            <option value="ipv6">IPv6</option>
+          </select>
+        </div>
+        <div class="field"><label>پورت (fallback)</label>
+          <select id="cl-port">
+            <option value="443">443 (HTTPS)</option>
+            <option value="8443">8443 (alt HTTPS)</option>
+            <option value="2053">2053 (Cloudflare)</option>
+            <option value="2083">2083 (Cloudflare)</option>
+            <option value="2087">2087 (Cloudflare)</option>
           </select>
         </div>
       </div>
@@ -867,18 +902,47 @@ tbody tr:hover{background:var(--hs-purple-d)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field"><label>کشور</label>
           <select id="el-country" onchange="populateEditStaticIP()">
-            <option value="auto">خودکار</option>
-            <option value="US">آمریکا 🇺🇸</option>
-            <option value="EU">اروپا 🇪🇺</option>
-            <option value="ASIA">آسیا 🌏</option>
-            <option value="OC">اقیانوسیه 🌊</option>
-            <option value="SA">آمریکا جنوبی 🌎</option>
-            <option value="AF">آفریقا 🌍</option>
+            <option value="auto">🌐 خودکار</option>
+            <option value="US">🇺🇸 United States</option>
+            <option value="DE">🇩🇪 Germany</option>
+            <option value="FR">🇫🇷 France</option>
+            <option value="GB">🇬🇧 United Kingdom</option>
+            <option value="NL">🇳🇱 Netherlands</option>
+            <option value="IT">🇮🇹 Italy</option>
+            <option value="ES">🇪🇸 Spain</option>
+            <option value="SE">🇸🇪 Sweden</option>
+            <option value="FI">🇫🇮 Finland</option>
+            <option value="PL">🇵🇱 Poland</option>
+            <option value="CH">🇨🇭 Switzerland</option>
+            <option value="AT">🇦🇹 Austria</option>
+            <option value="TR">🇹🇷 Turkey</option>
+            <option value="AE">🇦🇪 UAE</option>
+            <option value="JP">🇯🇵 Japan</option>
+            <option value="SG">🇸🇬 Singapore</option>
+            <option value="KR">🇰🇷 South Korea</option>
+            <option value="HK">🇭🇰 Hong Kong</option>
           </select>
         </div>
         <div class="field"><label>IP Static</label>
           <select id="el-static-ip">
-            <option value="">خودکار (پیش‌فرض)</option>
+            <option value="">⚡ خودکار (سریع‌ترین)</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>IP Version</label>
+          <select id="el-ipver">
+            <option value="ipv4">IPv4</option>
+            <option value="ipv6">IPv6</option>
+          </select>
+        </div>
+        <div class="field"><label>پورت</label>
+          <select id="el-port">
+            <option value="443">443</option>
+            <option value="8443">8443</option>
+            <option value="2053">2053</option>
+            <option value="2083">2083</option>
+            <option value="2087">2087</option>
           </select>
         </div>
       </div>
@@ -992,10 +1056,13 @@ function showToast(msg, type='info', duration=3500){
   const h = document.getElementById('toast-host');
   const t = document.createElement('div');
   t.className = 'toast ' + type;
-  const ic = {success:'ti-circle-check',error:'ti-circle-x',warn:'ti-alert-triangle',info:'ti-info-circle'}[type] || 'ti-info-circle';
-  t.innerHTML = '<i class="ti ' + ic + '"></i><span>' + msg + '</span>';
+  const ic = {success:'ti-circle-check-filled',error:'ti-circle-x-filled',warn:'ti-alert-triangle-filled',info:'ti-info-circle-filled'}[type] || 'ti-info-circle-filled';
+  t.innerHTML = '<i class="ti ' + ic + ' toast-icon"></i><span class="toast-msg">' + msg + '</span><button class="toast-close" aria-label="بستن"><i class="ti ti-x"></i></button>';
+  const closeBtn = t.querySelector('.toast-close');
+  const close = () => { t.classList.add('exit'); setTimeout(() => t.remove(), 250); };
+  closeBtn.onclick = close;
   h.appendChild(t);
-  setTimeout(() => { t.classList.add('exit'); setTimeout(() => t.remove(), 250); }, duration);
+  setTimeout(close, duration);
 }
 
 /* ════ LOGOUT ════ */
@@ -1050,17 +1117,20 @@ async function loadLinks(){
     const d = await r.json();
     const rows = document.querySelector('#links-tbl tbody');
     const links = d.links || [];
-    if(!links.length){ rows.innerHTML = '<tr><td colspan="6"><div class="empty"><i class="ti ti-link-off"></i><div class="empty-title">کانفیگی نیست</div><div class="empty-sub">اولین کانفیگ خود را بسازید</div></div></td></tr>'; return; }
+    if(!links.length){ rows.innerHTML = '<tr><td colspan="8"><div class="empty"><i class="ti ti-link-off"></i><div class="empty-title">کانفیگی نیست</div><div class="empty-sub">اولین کانفیگ خود را بسازید</div></div></td></tr>'; return; }
     rows.innerHTML = links.map(l => {
       const used = (l.used_bytes||0);
       const lim = (l.limit_bytes||0);
       const pct = lim > 0 ? Math.min(100, (used/lim*100)) : 0;
-      return '<tr data-label="' + (l.label||'').toLowerCase() + '"><td><div class="cell-label">' + (l.label||'—') + '</div><div class="cell-mono">' + (l.uuid||'').substring(0,8) + '...</div></td>' +
+      // زیر کانفیگ فقط IP یا UUID کوتاه نشون بده - نه ایمیل/فول اینفو
+      const subLine = l.static_ip || (l.uuid ? l.uuid.substring(0,8) : '—');
+      return '<tr data-label="' + (l.label||'').toLowerCase() + '"><td><div class="cell-label">' + (l.label||'—') + '</div><div class="cell-mono">' + subLine + '</div></td>' +
         '<td><span class="badge badge-purple">' + (l.protocol||'') + '</span></td>' +
         '<td><div class="cell-mono">' + fmtBytes(used) + '</div>' + (lim>0 ? '<div style="height:3px;background:var(--hs-border2);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--hs-purple),var(--hs-violet))"></div></div>' : '') + '</td>' +
         '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
-        '<td><div style="font-size:11px"><div>' + (l.country && l.country!=='auto' ? l.country : '🌐 Auto') + '</div>' + (l.static_ip ? '<div style="color:var(--hs-purple);font-family:monospace">' + l.static_ip + '</div>' : '') + '</div></td>' +
+        '<td><div style="font-size:11px"><div>' + (l.country && l.country!=='auto' ? l.country : '🌐 Auto') + ' · :' + (l.port||443) + '</div>' + (l.static_ip ? '<div style="color:var(--hs-purple);font-family:monospace">' + l.static_ip + '</div>' : '<div style="color:var(--hs-dim);font-size:10px">' + (l.ip_version==='ipv6' ? 'IPv6' : 'IPv4') + '</div>') + '</div></td>' +
         '<td>' + (l.expired ? '<span class="badge badge-red badge-dot">منقضی</span>' : l.active===false ? '<span class="badge badge-amber badge-dot">غیرفعال</span>' : '<span class="badge badge-green badge-dot">فعال</span>') + '</td>' +
+        '<td><div class="cell-mono" style="font-size:11px">' + (l.expires_at ? (function(){try{const dt=new Date(l.expires_at);const now=new Date();const diff=dt-now;if(diff<0)return '<span style="color:var(--hs-danger)">منقضی</span>';const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000);return '<span style="color:'+(d<3?'var(--hs-warn)':'var(--hs-text)')+'">' + d + ' روز ' + h + 'س</span>';}catch(e){return '—';}})() : '<span style="color:var(--hs-dim)">∞</span>') + '</div></td>' +
         '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="testLink(\'' + l.uuid + '\')" title="تست/پینگ"><i class="ti ti-bolt"></i></button><button class="btn btn-ghost btn-sm" onclick="editLink(\'' + l.uuid + '\')" title="ویرایش"><i class="ti ti-edit"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
     }).join('');
   } catch(e){ showToast('خطا در بارگذاری کانفیگ‌ها','error'); }
@@ -1083,6 +1153,23 @@ function fmtBytes(b){
 }
 
 async function createLink(){
+  const country = document.getElementById('cl-country').value || 'auto';
+  let staticIp = document.getElementById('cl-static-ip').value || '';
+  // اگه کاربر چیزی انتخاب نکرده، خودمون سریع‌ترین رو پیدا کنیم
+  if (!staticIp && country !== 'auto') {
+    try {
+      const r = await fetch('/api/cloudflare-ips/speedtest?country=' + country);
+      const d = await r.json();
+      if (d.fastest) staticIp = d.fastest;
+    } catch(e){}
+  } else if (!staticIp) {
+    // auto: همه رو تست کن
+    try {
+      const r = await fetch('/api/cloudflare-ips/speedtest');
+      const d = await r.json();
+      if (d.fastest) staticIp = d.fastest;
+    } catch(e){}
+  }
   const body = {
     label: document.getElementById('cl-label').value || 'لینک جدید',
     protocol: document.getElementById('cl-proto').value,
@@ -1090,14 +1177,16 @@ async function createLink(){
     limit_unit: document.getElementById('cl-unit').value,
     expires_days: parseInt(document.getElementById('cl-exp').value) || 0,
     note: document.getElementById('cl-note').value || '',
-    country: document.getElementById('cl-country').value || 'auto',
-    static_ip: document.getElementById('cl-static-ip').value || '',
+    country: country,
+    static_ip: staticIp,
+    ip_version: document.getElementById('cl-ipver').value || 'ipv4',
+    port: parseInt(document.getElementById('cl-port').value) || 443,
   };
   try {
     const r = await fetch('/api/links', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
     closeModal('modal-create-link');
-    showToast('کانفیگ با موفقیت ساخته شد','success');
+    showToast('کانفیگ با موفقیت ساخته شد' + (staticIp ? ' · IP: ' + staticIp : ''),'success');
     loadLinks();
     loadStats();
   } catch(e){ showToast(e.message,'error'); }
@@ -1110,6 +1199,24 @@ async function copyLink(uid){
     const l = (d.links||[]).find(x => x.uuid === uid);
     if(l && l.vless_link){ navigator.clipboard.writeText(l.vless_link); showToast('لینک کپی شد','success'); }
   } catch(e){ showToast('خطا در کپی','error'); }
+}
+
+async function testAllLinks(){
+  showToast('⏳ در حال تست همه کانفیگ‌ها...','info',2000);
+  try {
+    const r = await fetch('/api/links');
+    const d = await r.json();
+    const links = d.links || [];
+    if(!links.length){ showToast('کانفیگی نیست','warn'); return; }
+    let ok=0, fail=0;
+    for(const l of links){
+      try {
+        const tr = await fetch('/api/links/' + l.uuid + '/test');
+        if(tr.ok) ok++; else fail++;
+      } catch(e){ fail++; }
+    }
+    showToast('✅ ' + ok + ' کانفیگ آنلاین · ❌ ' + fail + ' مشکل دارد','info',6000);
+  } catch(e){ showToast('خطا','error'); }
 }
 
 async function testLink(uid){
@@ -1160,16 +1267,19 @@ async function showCloudflareIPs(){
     // پر کردن dropdown داخل modal
     populateStaticIPSelect(d);
     let html = '<div style="text-align:right;direction:rtl;min-width:360px;max-height:400px;overflow-y:auto">';
-    html += '<div style="font-weight:600;margin-bottom:6px;color:var(--hs-purple)">🌐 IP های Static (Cloudflare)</div>';
+    html += '<div style="font-weight:600;margin-bottom:6px;color:var(--hs-purple);display:flex;align-items:center;gap:8px"><i class="ti ti-world"></i> IP های Static (Cloudflare)</div>';
     html += '<div style="font-size:11px;color:var(--hs-text2);margin-bottom:10px">Host: ' + d.host + '<br>اگه DNS فیلتره، این IP ها رو مستقیم تو کانفیگ بذار. SNI = host.</div>';
-    // گروه‌بندی بر اساس region
-    Object.keys(d.by_region).forEach(region => {
-      html += '<div style="margin-top:8px;font-weight:600;color:var(--hs-purple)">' + region + '</div>';
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:monospace;font-size:11px;margin-top:4px">';
-      d.by_region[region].forEach(item => {
-        html += '<div style="padding:6px 8px;background:rgba(124,92,231,.1);border-radius:4px;cursor:pointer" title="' + item.city + '" onclick="navigator.clipboard.writeText(\'' + item.ip + '\');showToast(\'کپی شد: ' + item.ip + ' (' + item.city + ')\',\'success\',2000)"><div>' + item.ip + '</div><div style="font-size:9px;color:var(--hs-text2)">' + item.city + '</div></div>';
+    // گروه‌بندی بر اساس کشور
+    const byCountry = d.by_country || {};
+    Object.keys(byCountry).forEach(code => {
+      const grp = byCountry[code];
+      html += '<div style="margin-top:10px;padding:5px 9px;background:rgba(139,92,246,.12);border-radius:6px;font-weight:700;color:var(--hs-purple2);font-size:12px;display:inline-block">' + grp.name + '</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-family:monospace;font-size:11px;margin-top:6px">';
+      grp.ips.forEach(item => {
+        html += '<div style="padding:7px 9px;background:rgba(124,92,231,.08);border:1px solid rgba(124,92,231,.15);border-radius:7px;cursor:pointer;transition:.2s" title="کلیک برای کپی" onclick="navigator.clipboard.writeText(\'' + item.ip + '\');showToast(\'کپی شد: ' + item.ip + ' (' + item.city + ')\',\'success\',2000)"><div style="color:var(--hs-purple2);font-weight:600">' + item.ip + '</div><div style="font-size:9.5px;color:var(--hs-text2);margin-top:2px">' + item.city + '</div></div>';
       });
       html += '</div>';
+    });
     });
     html += '</div>';
     showToast(html, 'info', 30000);
@@ -1188,10 +1298,10 @@ async function populateStaticIPSelect(){
     const sel = document.getElementById('cl-static-ip');
     if (!sel) return;
     const selCountry = document.getElementById('cl-country');
-    const currentRegion = selCountry ? selCountry.value : 'auto';
-    sel.innerHTML = '<option value="">خودکار (پیش‌فرض)</option>';
+    const currentCountry = selCountry ? selCountry.value : 'auto';
+    sel.innerHTML = '<option value="">⚡ خودکار (تست سریع‌ترین)</option>';
     d.ips.forEach(item => {
-      if (currentRegion === 'auto' || item.region === currentRegion) {
+      if (currentCountry === 'auto' || item.country === currentCountry) {
         const opt = document.createElement('option');
         opt.value = item.ip;
         opt.textContent = item.ip + ' (' + item.city + ')';
@@ -1216,7 +1326,7 @@ async function populateEditStaticIP(){
     const currentVal = sel.dataset.current || '';
     sel.innerHTML = '<option value="">خودکار (پیش‌فرض)</option>';
     d.ips.forEach(item => {
-      if (currentRegion === 'auto' || item.region === currentRegion) {
+      if (currentRegion === 'auto' || item.country === currentRegion) {
         const opt = document.createElement('option');
         opt.value = item.ip;
         opt.textContent = item.ip + ' (' + item.city + ')';
@@ -1236,6 +1346,8 @@ async function editLink(uid){
     document.getElementById('el-uid').value = uid;
     document.getElementById('el-label').value = l.label || '';
     document.getElementById('el-country').value = l.country || 'auto';
+    document.getElementById('el-ipver').value = l.ip_version || 'ipv4';
+    document.getElementById('el-port').value = l.port || 443;
     // اگه limit_bytes > 0، به GB یا MB تبدیل کن
     const lb = l.limit_bytes || 0;
     if (lb > 0) {
@@ -1267,11 +1379,12 @@ async function saveEdit(){
     label: document.getElementById('el-label').value,
     country: document.getElementById('el-country').value,
     static_ip: document.getElementById('el-static-ip').value,
+    ip_version: document.getElementById('el-ipver').value,
+    port: parseInt(document.getElementById('el-port').value) || 443,
     limit_value: parseFloat(document.getElementById('el-val').value) || 0,
     limit_unit: document.getElementById('el-unit').value,
     note: document.getElementById('el-note').value,
   };
-  // expires_days فقط اگه کاربر پر کرده بفرست
   if (expVal !== '' && expVal !== null) {
     body.expires_days = parseInt(expVal) || 0;
   }
@@ -1337,8 +1450,8 @@ function renderGaming(){
     return;
   }
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' + gamingProfiles.map((p,i) =>
-    '<div style="background:rgba(0,0,0,.16);border:1px solid var(--hs-border2);border-radius:12px;padding:16px;transition:.2s" onmouseover="this.style.borderColor=\'var(--hs-purple)\'" onmouseout="this.style.borderColor=\'var(--hs-border2)\'">' +
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--hs-text)">' + (p.name||'') + '</div><div style="font-size:11.5px;color:var(--hs-dim);margin-top:2px">' + (p.game||'') + '</div></div><button class="btn btn-danger btn-sm btn-icon" onclick="deleteGaming(' + i + ')"><i class="ti ti-trash"></i></button></div>' +
+    '<div style="background:rgba(0,0,0,.16);border:1px solid var(--hs-border2);border-radius:12px;padding:14px;transition:.2s" onmouseover="this.style.borderColor=\'var(--hs-purple)\'" onmouseout="this.style.borderColor=\'var(--hs-border2)\'">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px"><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--hs-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (p.name||'') + '</div><div style="font-size:11px;color:var(--hs-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (p.game||'') + '</div></div><button onclick="deleteGaming(' + i + ')" style="background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.2);color:var(--hs-danger);width:28px;height:28px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:.2s" onmouseover="this.style.background=\'rgba(251,113,133,.22)\'" onmouseout="this.style.background=\'rgba(251,113,133,.12)\'"><i class="ti ti-trash"></i></button></div>' +
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">' +
     '<span class="badge badge-purple">' + (p.preset||'') + '</span>' +
     '<span class="badge badge-blue">' + (p.net||'') + '</span>' +
