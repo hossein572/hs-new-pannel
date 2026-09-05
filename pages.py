@@ -1130,7 +1130,7 @@ async function loadLinks(){
         '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
         '<td><div style="font-size:11px"><div>' + (l.country && l.country!=='auto' ? l.country : '🌐 Auto') + ' · :' + (l.port||443) + '</div>' + (l.static_ip ? '<div style="color:var(--hs-purple);font-family:monospace">' + l.static_ip + '</div>' : '<div style="color:var(--hs-dim);font-size:10px">' + (l.ip_version==='ipv6' ? 'IPv6' : 'IPv4') + '</div>') + '</div></td>' +
         '<td>' + (l.expired ? '<span class="badge badge-red badge-dot">منقضی</span>' : l.active===false ? '<span class="badge badge-amber badge-dot">غیرفعال</span>' : '<span class="badge badge-green badge-dot">فعال</span>') + '</td>' +
-        '<td><div class="cell-mono" style="font-size:11px">' + (l.expires_at ? (function(){try{const dt=new Date(l.expires_at);const now=new Date();const diff=dt-now;if(diff<0)return '<span style="color:var(--hs-danger)">منقضی</span>';const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000);return '<span style="color:'+(d<3?'var(--hs-warn)':'var(--hs-text)')+'">' + d + ' روز ' + h + 'س</span>';}catch(e){return '—';}})() : '<span style="color:var(--hs-dim)">∞</span>') + '</div></td>' +
+        '<td><div class="cell-mono" style="font-size:11px">' + (l.expires_at ? formatExpiry(l.expires_at) : '<span style="color:var(--hs-dim)">∞</span>') + '</div></td>' +
         '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="testLink(\'' + l.uuid + '\')" title="تست/پینگ"><i class="ti ti-bolt"></i></button><button class="btn btn-ghost btn-sm" onclick="editLink(\'' + l.uuid + '\')" title="ویرایش"><i class="ti ti-edit"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
     }).join('');
   } catch(e){ showToast('خطا در بارگذاری کانفیگ‌ها','error'); }
@@ -1150,6 +1150,19 @@ function fmtBytes(b){
   if(b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
   if(b < 1024*1024*1024) return (b/1024/1024).toFixed(2) + ' MB';
   return (b/1024/1024/1024).toFixed(2) + ' GB';
+}
+
+function formatExpiry(iso){
+  try {
+    const dt = new Date(iso);
+    const now = new Date();
+    const diff = dt - now;
+    if (diff < 0) return '<span style="color:var(--hs-danger)">منقضی</span>';
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const col = d < 3 ? 'var(--hs-warn)' : 'var(--hs-text)';
+    return '<span style="color:' + col + '">' + d + ' روز ' + h + 'س</span>';
+  } catch(e) { return '—'; }
 }
 
 async function createLink(){
