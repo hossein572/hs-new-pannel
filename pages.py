@@ -10,8 +10,8 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -292,9 +292,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" async onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js'"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -801,7 +801,9 @@ tbody tr:hover{background:var(--hs-purple-d)}
         <div class="page-head">
           <div><h1 class="page-title"><i class="ti ti-cloud-download"></i> بروزرسانی</h1><div class="page-sub">بررسی و نصب نسخه جدید</div></div>
         </div>
-        <div class="card"><div class="empty"><i class="ti ti-cloud-check"></i><div class="empty-title">بروزرسانی</div><div class="empty-sub">در حال بارگذاری اطلاعات نسخه...</div></div></div>
+        <div class="card" id="update-card"><div class="empty"><i class="ti ti-cloud-check"></i><div class="empty-title">بروزرسانی</div><div class="empty-sub">برای بررسی نسخه جدید روی دکمه زیر بزنید</div></div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn btn-primary" onclick="checkVersion()"><i class="ti ti-refresh"></i> بررسی نسخه</button></div>
+        </div>
       </div>
     </div>
   </main>
@@ -1070,6 +1072,17 @@ async function logout(){
   try { await fetch('/api/logout', {method:'POST'}); } catch(e){}
   window.location.href = '/login';
 }
+
+/* ════ FETCH WRAPPER ════ */
+const _rawFetch = window.fetch.bind(window);
+window.fetch = async function(url, opts){
+  const r = await _rawFetch(url, opts);
+  if(r.status === 401 && typeof url === 'string' && url.startsWith('/') && !url.startsWith('/api/login')){
+    window.location.href = '/login';
+    throw new Error('unauthorized');
+  }
+  return r;
+};
 
 /* ════ DATA LOADING ════ */
 async function loadStats(){
@@ -1512,6 +1525,12 @@ function renderChart(hourly){
     labels.push(key);
     data.push((hourly && hourly[key]) ? (hourly[key]/1024/1024) : 0);
   }
+  if(typeof Chart === 'undefined'){
+    // Chart.js هنوز لود نشده (CDN کند/فیلتر) — بعداً دوباره تلاش کن، ولی بقیه‌ی پنل نباید بلاک بشه
+    if(!renderChart._retries) renderChart._retries = 0;
+    if(renderChart._retries++ < 20) setTimeout(() => renderChart(hourly), 1500);
+    return;
+  }
   const grad = ctx.getContext('2d').createLinearGradient(0,0,0,280);
   grad.addColorStop(0, 'rgba(155,124,255,0.5)');
   grad.addColorStop(1, 'rgba(155,124,255,0)');
@@ -1540,23 +1559,71 @@ function renderChart(hourly){
   });
 }
 
+/* ════ UPDATE ════ */
+function esc(x){ return String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function checkVersion(){
+  const card = document.getElementById('update-card');
+  if(!card) return;
+  card.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><div class="empty-sub">در حال بررسی نسخه...</div></div>';
+  try {
+    const r = await fetch('/api/version');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    const cur = (d.current && d.current.version) || '-';
+    const lat = (d.latest && d.latest.version) || '-';
+    const notes = (d.latest && (d.latest.notes || d.latest.description)) || '';
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--hs-border2);font-size:13px"><span style="color:var(--hs-dim)">نسخه فعلی</span><span style="font-weight:600;font-family:monospace">' + esc(cur) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--hs-border2);font-size:13px"><span style="color:var(--hs-dim)">آخرین نسخه</span><span style="font-weight:600;font-family:monospace">' + esc(lat) + '</span></div>' +
+      (notes ? '<div style="padding:10px 0;font-size:12px;color:var(--hs-dim);white-space:pre-wrap">' + esc(notes) + '</div>' : '') +
+      '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+        '<button class="btn btn-outline" onclick="checkVersion()"><i class="ti ti-refresh"></i> بررسی مجدد</button>' +
+        (d.update_available ? '<button class="btn btn-primary" onclick="startUpdate()"><i class="ti ti-cloud-download"></i> نصب نسخه ' + esc(lat) + '</button>' : '<span class="badge badge-green badge-dot" style="align-self:center">به‌روز هستید</span>') +
+      '</div><div id="update-log" style="margin-top:10px;font-size:11px;font-family:monospace;color:var(--hs-dim);white-space:pre-wrap"></div>';
+  } catch(e){
+    card.innerHTML = '<div class="empty"><i class="ti ti-alert-triangle"></i><div class="empty-title">خطا</div><div class="empty-sub">دریافت اطلاعات نسخه ممکن نشد</div></div><div style="display:flex;justify-content:center;margin-top:10px"><button class="btn btn-outline" onclick="checkVersion()"><i class="ti ti-refresh"></i> تلاش مجدد</button></div>';
+  }
+}
+async function startUpdate(){
+  if(!confirm('نسخه جدید نصب و پنل ری‌استارت شود؟')) return;
+  try {
+    const r = await fetch('/api/update', {method:'POST'});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast('بروزرسانی شروع شد', 'success');
+    pollUpdateLog();
+  } catch(e){ showToast(e.message || 'خطا در شروع بروزرسانی', 'error'); }
+}
+async function pollUpdateLog(){
+  const el = document.getElementById('update-log');
+  if(!el) return;
+  try {
+    const r = await fetch('/api/update-log');
+    const d = await r.json();
+    el.textContent = (d.logs || []).map(l => l.msg).join('\n');
+    el.scrollTop = el.scrollHeight;
+    if(d.running) setTimeout(pollUpdateLog, 2000);
+    else setTimeout(checkVersion, 4000);
+  } catch(e){ setTimeout(pollUpdateLog, 3000); }
+}
+
 /* ════ INIT ════ */
 async function refreshAll(){
   await Promise.all([loadStats(), loadActivity(), loadLinks()]);
 }
 async function init(){
-  await refreshAll();
-  loadGamingProfiles();
+  try { await refreshAll(); } catch(e){ console.error('refreshAll', e); }
+  try { loadGamingProfiles(); } catch(e){ console.error('gaming', e); }
   // Get hourly data from stats
   try {
     const r = await fetch('/stats');
     const d = await r.json();
     renderChart(d.hourly || {});
-  } catch(e){ renderChart({}); }
+  } catch(e){ try { renderChart({}); } catch(_){} }
   // Auto refresh every 30s
   setInterval(loadStats, 30000);
 }
-init();
+init().catch(e => console.error('init failed', e));
 </script>
 </body>
 </html>
@@ -1572,7 +1639,7 @@ def get_public_page_html(uuid_key: str) -> str:
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--hs-bg:#0C0A14;--hs-card:rgba(22,18,34,0.7);--hs-purple:#9B7CFF;--hs-text:#F2EEFF;--hs-dim:#8B85A8;--hs-mid:#A9A3C8;--hs-border:rgba(155,124,255,0.18);--hs-violet:#7C5CE7}
