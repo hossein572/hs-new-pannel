@@ -1085,9 +1085,19 @@ window.fetch = async function(url, opts){
 };
 
 /* ════ DATA LOADING ════ */
+async function authFetch(url, opts){
+  // یه wrapper که اگه 401 اومد، خودش redirect کنه به لاگین
+  const r = await fetch(url, opts);
+  if (r.status === 401) {
+    window.location.href = '/login';
+    throw new Error('unauthorized');
+  }
+  return r;
+}
+
 async function loadStats(){
   try {
-    const r = await fetch('/stats');
+    const r = await authFetch('/stats');
     if(!r.ok) throw new Error();
     const d = await r.json();
     document.getElementById('st-links').textContent = d.links_count || 0;
@@ -1109,7 +1119,7 @@ async function loadStats(){
 
 async function loadActivity(){
   try {
-    const r = await fetch('/api/activity');
+    const r = await authFetch('/api/activity');
     if(!r.ok) throw new Error();
     const d = await r.json();
     const logs = d.logs || [];
@@ -1125,7 +1135,7 @@ async function loadActivity(){
 
 async function loadLinks(){
   try {
-    const r = await fetch('/api/links');
+    const r = await authFetch('/api/links');
     if(!r.ok) throw new Error();
     const d = await r.json();
     const rows = document.querySelector('#links-tbl tbody');
@@ -1616,7 +1626,7 @@ async function init(){
   try { loadGamingProfiles(); } catch(e){ console.error('gaming', e); }
   // Get hourly data from stats
   try {
-    const r = await fetch('/stats');
+    const r = await authFetch('/stats');
     const d = await r.json();
     renderChart(d.hourly || {});
   } catch(e){ try { renderChart({}); } catch(_){} }
