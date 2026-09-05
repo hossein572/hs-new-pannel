@@ -1279,8 +1279,7 @@ async function showCloudflareIPs(){
         html += '<div style="padding:7px 9px;background:rgba(124,92,231,.08);border:1px solid rgba(124,92,231,.15);border-radius:7px;cursor:pointer;transition:.2s" title="کلیک برای کپی" onclick="navigator.clipboard.writeText(\'' + item.ip + '\');showToast(\'کپی شد: ' + item.ip + ' (' + item.city + ')\',\'success\',2000)"><div style="color:var(--hs-purple2);font-weight:600">' + item.ip + '</div><div style="font-size:9.5px;color:var(--hs-text2);margin-top:2px">' + item.city + '</div></div>';
       });
       html += '</div>';
-    });
-    });
+    }
     html += '</div>';
     showToast(html, 'info', 30000);
   } catch(e){
