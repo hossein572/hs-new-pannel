@@ -29,7 +29,10 @@ import asyncio
 import json
 import os
 import hashlib
+import random
+import re
 import secrets
+import string
 import sys
 import time
 import traceback
@@ -219,7 +222,7 @@ def apply_logging_state():
 
 
 async def load_state():
-    global LINKS, AUTH, SUBS
+    global LINKS, AUTH, SUBS, USERS
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         if DATA_FILE.exists():
@@ -233,11 +236,12 @@ async def load_state():
                 NODES[nid] = _normalize_node(n)
             if "password_hash" in data:
                 AUTH["password_hash"] = data["password_hash"]
+            USERS.update(data.get("users", {}))
             CONFIG["disable_logging"] = bool(data.get("disable_logging", False))
             apply_logging_state()
             logger.info(
                 f"State loaded: {len(LINKS)} links, {len(SUBS)} subs, "
-                f"{len(NODES)} nodes, {len(NODE_KEYS)} node keys"
+                f"{len(NODES)} nodes, {len(NODE_KEYS)} node keys, {len(USERS)} users"
             )
     except Exception as e:
         logger.warning(f"Could not load state: {e}")
@@ -251,6 +255,7 @@ async def save_state():
                 "subs": dict(SUBS),
                 "node_keys": dict(NODE_KEYS),
                 "nodes": dict(NODES),
+                "users": dict(USERS),
                 "password_hash": AUTH["password_hash"],
                 "disable_logging": CONFIG.get("disable_logging", False),
                 "saved_at": datetime.now().isoformat(),
@@ -361,23 +366,160 @@ def hash_password(pw: str) -> str:
     return hashlib.sha256(f"{pw}{CONFIG['secret']}".encode()).hexdigest()
 
 AUTH = {"password_hash": hash_password(os.environ.get("ADMIN_PASSWORD", "123456"))}
-SESSIONS: dict = {}
+SESSIONS: dict = {}          # token -> {"email": str, "is_admin": bool, "exp": float}
 SESSIONS_LOCK = asyncio.Lock()
+
+# ── Multi-user (email + verification code) ────────────────────────────────────
+# USERS: ایمیل -> {"password_hash": str, "is_admin": bool, "created_at": str, "email_verified": True}
+# VERIFICATION_CODES: email -> {"code": str, "expires_at": float, "purpose": "register"|"login"}
+# PASSWORD_RESET: email -> {"code": str, "expires_at": float}
+USERS: dict = {}
+USERS_LOCK = asyncio.Lock()
+VERIFICATION_CODES: dict = {}
+VERIFICATION_LOCK = asyncio.Lock()
+PASSWORD_RESET: dict = {}
+PASSWORD_RESET_LOCK = asyncio.Lock()
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "").strip().lower() or "admin@hspanel.local"
+
+# کد تایید ۶ رقمی، ۱۰ دقیقه اعتبار
+VERIFICATION_TTL = 600
+VERIFICATION_CODE_LEN = 6
+
+def generate_verification_code() -> str:
+    return "".join(random.choices(string.digits, k=VERIFICATION_CODE_LEN))
+
+def is_valid_email(email: str) -> bool:
+    """اعتبارسنجی ساده‌ی ایمیل"""
+    if not email or len(email) > 254:
+        return False
+    pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(pattern, email))
+
+async def send_verification_email(email: str, code: str, purpose: str = "login") -> bool:
+    """
+    ارسال کد تایید به ایمیل.
+    اگه SMTP تنظیم نشده باشه، در حالت development کد رو log میکنه و در
+    فایل dev_codes.json ذخیره میکنه تا قابل بررسی باشه.
+    """
+    smtp_host = os.environ.get("SMTP_HOST", "").strip()
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "").strip()
+    smtp_pass = os.environ.get("SMTP_PASS", "").strip()
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user or "noreply@hspanel.local").strip()
+
+    if purpose == "register":
+        subject = "کد تأیید ثبت‌نام HS Panel"
+        body_text = f"کد تأیید شما: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
+    elif purpose == "login":
+        subject = "کد ورود HS Panel"
+        body_text = f"کد ورود شما: {code}\nاگه شما این درخواست رو ندادید، این پیام رو نادیده بگیرید."
+    else:  # reset
+        subject = "کد بازیابی رمز HS Panel"
+        body_text = f"کد بازیابی رمز: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
+
+    if not smtp_host or not smtp_user:
+        # حالت development: کد رو log کن و در فایل ذخیره کن
+        logger.info(f"[DEV-MAIL] To: {email} | Code: {code} | Purpose: {purpose}")
+        dev_path = DATA_DIR / "dev_codes.json"
+        try:
+            dev_codes = {}
+            if dev_path.exists():
+                with open(dev_path, "r", encoding="utf-8") as f:
+                    dev_codes = json.load(f)
+            # فقط آخرین ۲۰ کد رو نگه دار
+            dev_codes[email] = {"code": code, "purpose": purpose, "at": datetime.now().isoformat()}
+            if len(dev_codes) > 20:
+                # حذف قدیمی‌ترین‌ها
+                keys_sorted = sorted(dev_codes.keys(), key=lambda k: dev_codes[k].get("at", ""))
+                for k in keys_sorted[:-20]:
+                    dev_codes.pop(k, None)
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with open(dev_path, "w", encoding="utf-8") as f:
+                json.dump(dev_codes, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Could not save dev_codes: {e}")
+        return True
+
+    # ارسال واقعی ایمیل با SMTP
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = smtp_from
+        msg["To"] = email
+
+        html_body = f"""
+        <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; max-width:480px; margin:auto; padding:20px;">
+          <div style="background:linear-gradient(135deg,#6d3bf5,#8b5cf6);color:#fff;padding:20px;border-radius:12px;text-align:center;">
+            <h2 style="margin:0 0 8px;">HS Panel</h2>
+            <p style="margin:0;opacity:.9;">{subject}</p>
+          </div>
+          <div style="background:#f8f9fb;padding:24px;border-radius:0 0 12px 12px;text-align:center;">
+            <p style="margin:0 0 12px;color:#444;">کد تأیید شما:</p>
+            <div style="background:#fff;border:2px dashed #6d3bf5;border-radius:8px;padding:16px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#6d3bf5;">{code}</div>
+            <p style="margin:16px 0 0;color:#888;font-size:13px;">این کد تا ۱۰ دقیقه معتبر است.</p>
+          </div>
+        </div>
+        """
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_from, [email], msg.as_string())
+        logger.info(f"Verification email sent to {email} ({purpose})")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {email}: {e}")
+        return False
 
 async def create_session() -> str:
     token = secrets.token_urlsafe(32)
     async with SESSIONS_LOCK:
-        SESSIONS[token] = time.time() + SESSION_TTL
+        SESSIONS[token] = {
+            "email": None,           # بعداً با bind_session_to_user پر میشه
+            "is_admin": False,
+            "exp": time.time() + SESSION_TTL,
+        }
     return token
+
+async def bind_session_to_user(token: str, email: str, is_admin: bool):
+    """بعد از تأیید کد، session رو به کاربر متصل می‌کنه"""
+    async with SESSIONS_LOCK:
+        sess = SESSIONS.get(token)
+        if sess is not None:
+            sess["email"] = email
+            sess["is_admin"] = is_admin
+
+async def get_session_info(token: str) -> dict | None:
+    async with SESSIONS_LOCK:
+        sess = SESSIONS.get(token)
+        if not sess:
+            return None
+        if sess["exp"] < time.time():
+            SESSIONS.pop(token, None)
+            return None
+        return {"email": sess.get("email"), "is_admin": sess.get("is_admin", False)}
 
 async def is_valid_session(token: str | None) -> bool:
     if not token:
         return False
     async with SESSIONS_LOCK:
-        exp = SESSIONS.get(token)
-        if exp is None:
+        sess = SESSIONS.get(token)
+        if sess is None:
             return False
-        if exp < time.time():
+        # سازگاری با داده‌های قدیمی: اگه عدد ذخیره شده (exp قدیمی)
+        if isinstance(sess, (int, float)):
+            if sess < time.time():
+                SESSIONS.pop(token, None)
+                return False
+            return True
+        if sess.get("exp", 0) < time.time():
             SESSIONS.pop(token, None)
             return False
         return True
@@ -1146,19 +1288,202 @@ async def sub_group_subscription(uuid_key: str, request: Request):
     headers = build_sub_headers(f"پنل: {sub['name']}", total_used, total_limit, nearest_exp)
     return Response(content=content, media_type="text/plain", headers=headers)
 
-# ── Auth endpoints ────────────────────────────────────────────────────────────
-@app.post("/api/login")
-async def api_login(request: Request):
+# ── Auth endpoints (ایمیل + کد تأیید) ──────────────────────────────────────
+
+@app.post("/api/auth/request-code")
+async def api_request_code(request: Request):
+    """
+    مرحله ۱: کاربر ایمیلش رو میفرسته.
+    - اگه کاربر جدید باشه: ثبت‌نام میشه، کد تأیید به ایمیل میره.
+    - اگه قبلاً ثبت‌نام کرده باشه: کد ورود به ایمیل میره.
+    """
     body = await request.json()
-    ip = client_ip(request)
-    if hash_password(str(body.get("password", ""))) != AUTH["password_hash"]:
-        log_activity("auth", f"تلاش ورود ناموفق از {ip}", "err")
-        raise HTTPException(status_code=401, detail="رمز عبور اشتباه است")
+    email = str(body.get("email", "")).strip().lower()
+
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="ایمیل نامعتبر است")
+
+    # rate limit ساده: هر ایمیل نباید بیشتر از یک کد در ۳۰ ثانیه داشته باشه
+    async with VERIFICATION_LOCK:
+        existing = VERIFICATION_CODES.get(email)
+        if existing and existing["expires_at"] - VERIFICATION_TTL + 30 > time.time():
+            raise HTTPException(status_code=429, detail="لطفاً ۳۰ ثانیه صبر کنید و دوباره درخواست دهید")
+
+    is_new_user = email not in USERS
+
+    # اگه admin_email تنظیم شده، فقط اون ایمیل میتونه ادمین باشه.
+    # ولی بقیه‌ی ایمیل‌ها هم میتونن ثبت‌نام کنن و وارد بشن (به‌عنوان کاربر عادی).
+    code = generate_verification_code()
+    purpose = "register" if is_new_user else "login"
+
+    sent = await send_verification_email(email, code, purpose)
+    if not sent:
+        raise HTTPException(status_code=500, detail="خطا در ارسال ایمیل. تنظیمات SMTP را بررسی کنید.")
+
+    async with VERIFICATION_LOCK:
+        VERIFICATION_CODES[email] = {
+            "code": code,
+            "purpose": purpose,
+            "expires_at": time.time() + VERIFICATION_TTL,
+        }
+
+    log_activity("auth", f"کد تأیید به {email} ارسال شد ({purpose})", "info")
+
+    # اگه SMTP تنظیم نشده، تو dev-mode کد رو برگردون
+    dev_mode = not os.environ.get("SMTP_HOST", "").strip()
+    resp = {
+        "ok": True,
+        "email": email,
+        "is_new_user": is_new_user,
+        "expires_in": VERIFICATION_TTL,
+        "message": "کد تأیید به ایمیل شما ارسال شد" if not dev_mode
+                  else "کد تأیید ساخته شد. در حالت توسعه، کد در لاگ‌ها و data/dev_codes.json قابل مشاهده است.",
+    }
+    if dev_mode:
+        # در حالت dev، کد رو هم برگردون تا بشه تست کرد
+        resp["dev_code"] = code
+    return resp
+
+
+@app.post("/api/auth/verify-code")
+async def api_verify_code(request: Request):
+    """
+    مرحله ۲: کاربر کد ۶ رقمی رو وارد میکنه.
+    - اگه ثبت‌نام باشه: ازش میخواد رمز تعیین کنه (مرحله ۳)
+    - اگه ورود باشه: session ساخته میشه و وارد میشه
+    """
+    body = await request.json()
+    email = str(body.get("email", "")).strip().lower()
+    code = str(body.get("code", "")).strip()
+
+    if not is_valid_email(email):
+        raise HTTPException(status_code=400, detail="ایمیل نامعتبر است")
+    if not code or len(code) != VERIFICATION_CODE_LEN or not code.isdigit():
+        raise HTTPException(status_code=400, detail=f"کد باید {VERIFICATION_CODE_LEN} رقم باشد")
+
+    async with VERIFICATION_LOCK:
+        vc = VERIFICATION_CODES.get(email)
+        if not vc or vc["code"] != code:
+            raise HTTPException(status_code=401, detail="کد تأیید اشتباه است")
+        if vc["expires_at"] < time.time():
+            VERIFICATION_CODES.pop(email, None)
+            raise HTTPException(status_code=401, detail="کد تأیید منقضی شده. دوباره درخواست دهید.")
+        # کد رو پاک کن (یک‌بار مصرف)
+        VERIFICATION_CODES.pop(email, None)
+
+    is_new_user = email not in USERS
+
+    if is_new_user:
+        # ثبت‌نام: برگردون pending_session_token که کاربر با اون رمز رو تنظیم میکنه
+        pending_token = secrets.token_urlsafe(32)
+        async with SESSIONS_LOCK:
+            SESSIONS[pending_token] = {
+                "email": email,
+                "is_admin": False,
+                "is_pending_registration": True,
+                "exp": time.time() + SESSION_TTL,
+            }
+        return {
+            "ok": True,
+            "stage": "set_password",
+            "email": email,
+            "pending_token": pending_token,
+            "message": "کد تأیید شد. لطفاً رمز عبور خود را تنظیم کنید.",
+        }
+
+    # کاربر قبلاً ثبت‌نام کرده: وارد میشه
+    user = USERS[email]
+    is_admin = bool(user.get("is_admin", False))
     token = await create_session()
-    log_activity("auth", f"ورود موفق به پنل از {ip}", "ok")
-    resp = JSONResponse({"ok": True})
+    await bind_session_to_user(token, email, is_admin)
+
+    log_activity("auth", f"ورود موفق {email} به پنل", "ok")
+    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email})
     resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
     return resp
+
+
+@app.post("/api/auth/set-password")
+async def api_set_password(request: Request):
+    """
+    مرحله ۳ (فقط برای ثبت‌نام): کاربر بعد از تأیید کد، رمز تعیین میکنه.
+    """
+    body = await request.json()
+    pending_token = str(body.get("pending_token", "")).strip()
+    password = str(body.get("password", ""))
+
+    if not pending_token:
+        raise HTTPException(status_code=400, detail="توکن نامعتبر است")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="رمز عبور باید حداقل ۶ کاراکتر باشد")
+
+    async with SESSIONS_LOCK:
+        sess = SESSIONS.get(pending_token)
+        if not sess or not sess.get("is_pending_registration"):
+            raise HTTPException(status_code=401, detail="توکن منقضی شده. از اول شروع کنید.")
+        email = sess.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="ایمیل نامعتبر")
+
+    # اولین کاربر = ادمین (اگه admin_email تنظیم نشده)
+    is_admin = False
+    if not USERS:  # هیچ کاربری ثبت‌نام نکرده
+        is_admin = True
+    elif email == ADMIN_EMAIL:
+        is_admin = True
+
+    USERS[email] = {
+        "email": email,
+        "password_hash": hash_password(password),
+        "is_admin": is_admin,
+        "email_verified": True,
+        "created_at": datetime.now().isoformat(),
+        "last_login": datetime.now().isoformat(),
+    }
+    await save_state()
+
+    # pending session رو به session واقعی تبدیل کن
+    async with SESSIONS_LOCK:
+        SESSIONS.pop(pending_token, None)
+    token = await create_session()
+    await bind_session_to_user(token, email, is_admin)
+
+    log_activity("auth", f"کاربر جدید ثبت‌نام کرد: {email} (ادمین: {is_admin})", "ok")
+
+    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email, "message": "ثبت‌نام کامل شد"})
+    resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
+    return resp
+
+
+@app.post("/api/auth/login-password")
+async def api_login_password(request: Request):
+    """
+    ورود با رمز عبور (برای کاربرانی که قبلاً ثبت‌نام کرده‌اند).
+    جایگزین ساده برای ایمیل+کد برای دستگاه‌های مورد اعتماد.
+    """
+    body = await request.json()
+    email = str(body.get("email", "")).strip().lower()
+    password = str(body.get("password", ""))
+
+    if not is_valid_email(email) or not password:
+        raise HTTPException(status_code=400, detail="ایمیل و رمز عبور الزامی است")
+
+    user = USERS.get(email)
+    if not user or user.get("password_hash") != hash_password(password):
+        log_activity("auth", f"تلاش ورود ناموفق با رمز از {email}", "err")
+        raise HTTPException(status_code=401, detail="ایمیل یا رمز عبور اشتباه است")
+
+    is_admin = bool(user.get("is_admin", False))
+    token = await create_session()
+    await bind_session_to_user(token, email, is_admin)
+    user["last_login"] = datetime.now().isoformat()
+    await save_state()
+
+    log_activity("auth", f"ورود موفق {email} با رمز عبور", "ok")
+    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email})
+    resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
+    return resp
+
 
 @app.post("/api/logout")
 async def api_logout(request: Request):
@@ -1169,22 +1494,39 @@ async def api_logout(request: Request):
 
 @app.get("/api/me")
 async def api_me(request: Request):
-    return {"authenticated": await is_valid_session(request.cookies.get(SESSION_COOKIE))}
+    token = request.cookies.get(SESSION_COOKIE)
+    valid = await is_valid_session(token)
+    info = await get_session_info(token) if valid else None
+    return {
+        "authenticated": valid,
+        "email": info["email"] if info else None,
+        "is_admin": info["is_admin"] if info else False,
+    }
 
 @app.post("/api/change-password")
 async def api_change_password(request: Request, token=Depends(require_auth)):
+    """تغییر رمز عبور (کاربر لاگین کرده)"""
     body = await request.json()
-    if hash_password(str(body.get("current_password", ""))) != AUTH["password_hash"]:
-        raise HTTPException(status_code=400, detail="رمز فعلی اشتباه است")
+    current = str(body.get("current_password", ""))
     new = str(body.get("new_password", ""))
-    if len(new) < 4:
-        raise HTTPException(status_code=400, detail="رمز جدید باید حداقل ۴ کاراکتر باشد")
-    AUTH["password_hash"] = hash_password(new)
-    async with SESSIONS_LOCK:
-        SESSIONS.clear()
-        SESSIONS[token] = time.time() + SESSION_TTL
+
+    if len(new) < 6:
+        raise HTTPException(status_code=400, detail="رمز جدید باید حداقل ۶ کاراکتر باشد")
+
+    info = await get_session_info(token)
+    email = info["email"] if info else None
+    if not email:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    user = USERS.get(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="user not found")
+    if user.get("password_hash") != hash_password(current):
+        raise HTTPException(status_code=400, detail="رمز فعلی اشتباه است")
+
+    user["password_hash"] = hash_password(new)
     await save_state()
-    log_activity("auth", "رمز عبور پنل تغییر کرد", "ok")
+    log_activity("auth", f"کاربر {email} رمز عبورش رو تغییر داد", "ok")
     return {"ok": True}
 # ── Backup / Restore ──────────────────────────────────────────────────────────
 @app.get("/api/backup/export")

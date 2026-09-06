@@ -134,6 +134,7 @@ input:focus~.ic-lock{color:var(--hs-purple2);animation:wiggle .4s ease}
 
 .err{display:none;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-danger);align-items:center;gap:8px;animation:shake .35s}
 .err.show{display:flex}
+.success{display:flex;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-success);align-items:center;gap:8px}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
 .btn{
@@ -197,26 +198,54 @@ input:focus~.ic-lock{color:var(--hs-purple2);animation:wiggle .4s ease}
       <div><div class="brand-name">HS Panel</div><div class="brand-sub">Proxy Manager <span class="mono">· v1.0</span></div></div>
     </div>
     <h1>ورود به پنل</h1>
-    <p class="sub">رمز عبور را برای دسترسی به داشبورد مدیریت وارد کنید</p>
+    <p class="sub" id="sub-title">ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود</p>
 
     <div class="err" id="err" role="alert"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
+    <div class="success" id="success" role="status" style="display:none"><i class="ti ti-circle-check-filled"></i><span id="success-text"></span></div>
 
-    <div class="hint">
-      <i class="ti ti-info-circle"></i>
-      <span class="hint-label">رمز پیش‌فرض سیستم</span>
-      <span class="hint-val" tabindex="0" role="button" onclick="fillDefault()" onkeydown="if(event.key==='Enter')fillDefault()">123456</span>
-    </div>
-
-    <form id="form" novalidate>
+    <!-- مرحله ۱: ایمیل -->
+    <form id="form-email" novalidate>
       <div class="field">
-        <label for="pw">رمز عبور</label>
+        <label for="email">ایمیل</label>
         <div class="inp-wrap">
-          <input type="password" id="pw" placeholder="رمز عبور را وارد کنید" autofocus required autocomplete="current-password">
-          <i class="ti ti-lock ic-lock"></i>
-          <i class="ti ti-eye ic-eye" id="eye-toggle" onclick="togglePw()" role="button" tabindex="0" aria-label="نمایش رمز عبور"></i>
+          <input type="email" id="email" placeholder="example@domain.com" autofocus required autocomplete="email">
+          <i class="ti ti-mail ic-lock"></i>
         </div>
       </div>
-      <button class="btn" type="submit" id="btn"><i class="ti ti-login-2"></i> ورود به داشبورد</button>
+      <button class="btn" type="submit" id="btn-email"><i class="ti ti-send"></i> ارسال کد تأیید</button>
+    </form>
+
+    <!-- مرحله ۲: کد تأیید -->
+    <form id="form-code" novalidate style="display:none">
+      <div class="field">
+        <label for="code">کد تأیید</label>
+        <div class="inp-wrap">
+          <input type="text" id="code" placeholder="کد ۶ رقمی" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" style="font-size:22px;letter-spacing:8px;text-align:center">
+        </div>
+      </div>
+      <button class="btn" type="submit" id="btn-code"><i class="ti ti-login-2"></i> ورود</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="btn-back-email" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> تغییر ایمیل</button>
+    </form>
+
+    <!-- مرحله ۳: تنظیم رمز (فقط ثبت‌نام) -->
+    <form id="form-password" novalidate style="display:none">
+      <p class="sub" style="margin-bottom:16px">رمز عبور جدید برای حساب خود تعیین کنید</p>
+      <div class="field">
+        <label for="pw1">رمز عبور</label>
+        <div class="inp-wrap">
+          <input type="password" id="pw1" placeholder="حداقل ۶ کاراکتر" minlength="6" required>
+          <i class="ti ti-lock ic-lock"></i>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="pw2">تکرار رمز عبور</label>
+        <div class="inp-wrap">
+          <input type="password" id="pw2" placeholder="رمز را مجدداً وارد کنید" minlength="6" required>
+          <i class="ti ti-lock ic-lock"></i>
+        </div>
+      </div>
+      <button class="btn" type="submit" id="btn-set-pw"><i class="ti ti-check"></i> تکمیل ثبت‌نام</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> انصراف</button>
     </form>
 
     <div class="footer"><a href="https://t.me/" target="_blank" rel="noopener"><i class="ti ti-brand-telegram"></i> پشتیبانی</a></div>
@@ -239,43 +268,118 @@ function toggleTheme(){
 }
 applyTheme(isDark);
 
-function fillDefault(){
-  const pw = document.getElementById('pw');
-  pw.value = '123456';
-  pw.focus();
-}
-function togglePw(){
-  const pw = document.getElementById('pw');
-  const eye = document.getElementById('eye-toggle');
-  const show = pw.type === 'password';
-  pw.type = show ? 'text' : 'password';
-  eye.className = 'ti ' + (show ? 'ti-eye-off' : 'ti-eye') + ' ic-eye';
-}
-
-const form = document.getElementById('form');
-const btn = document.getElementById('btn');
 const errEl = document.getElementById('err');
 const errText = document.getElementById('err-text');
+const successEl = document.getElementById('success');
+const successText = document.getElementById('success-text');
 
-form.addEventListener('submit', async (e) => {
+let currentEmail = '';
+let pendingToken = '';
+let devCode = '';
+
+function showErr(msg){ errText.textContent = msg; errEl.style.display = 'flex'; errEl.classList.add('show'); }
+function hideErr(){ errEl.style.display = 'none'; errEl.classList.remove('show'); }
+function showSuccess(msg){ successText.textContent = msg; successEl.style.display = 'flex'; }
+function hideSuccess(){ successEl.style.display = 'none'; }
+
+function showStep(step){
+  document.getElementById('form-email').style.display = 'none';
+  document.getElementById('form-code').style.display = 'none';
+  document.getElementById('form-password').style.display = 'none';
+  if(step === 'email'){ document.getElementById('form-email').style.display = 'block'; document.getElementById('sub-title').textContent = 'ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود'; }
+  else if(step === 'code'){ document.getElementById('form-code').style.display = 'block'; document.getElementById('sub-title').textContent = 'کد ارسال‌شده به «' + currentEmail + '» را وارد کنید'; document.getElementById('code').focus(); }
+  else if(step === 'password'){ document.getElementById('form-password').style.display = 'block'; document.getElementById('sub-title').textContent = 'ثبت‌نام موفق! رمز عبور خود را تعیین کنید'; document.getElementById('pw1').focus(); }
+}
+function showEmailStep(){ hideErr(); hideSuccess(); showStep('email'); }
+
+// ── مرحله ۱: ارسال کد ──
+document.getElementById('form-email').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const pw = document.getElementById('pw').value;
-  if(!pw){ errText.textContent = 'رمز عبور را وارد کنید'; errEl.classList.add('show'); return; }
+  const emailInput = document.getElementById('email');
+  const email = emailInput.value.trim().toLowerCase();
+  const btn = document.getElementById('btn-email');
+  if(!email || !email.includes('@')){ showErr('ایمیل معتبر وارد کنید'); return; }
+  hideErr(); hideSuccess();
   btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ورود...';
-  errEl.classList.remove('show');
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...';
   try {
-    const r = await fetch('/api/login', {
+    const r = await fetch('/api/auth/request-code', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({password: pw})
+      body: JSON.stringify({email})
     });
-    if(!r.ok){ const d = await r.json().catch(()=>({})); throw new Error(d.detail || 'خطا در ورود'); }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا در ارسال کد');
+    currentEmail = email;
+    devCode = d.dev_code || '';
+    if(d.dev_mode || d.dev_code){
+      showSuccess('کد تأیید: ' + (d.dev_code || devCode) + ' (حالت توسعه)');
+    } else {
+      showSuccess('کد تأیید به ایمیل شما ارسال شد ✓');
+    }
+    showStep('code');
+  } catch(err){
+    showErr(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-send"></i> ارسال کد تأیید';
+  }
+});
+
+// ── مرحله ۲: تأیید کد ──
+document.getElementById('form-code').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('code').value.trim();
+  const btn = document.getElementById('btn-code');
+  if(!code || code.length !== 6 || !/^\d+$/.test(code)){ showErr('کد باید ۶ رقم باشد'); return; }
+  hideErr(); hideSuccess();
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال تأیید...';
+  try {
+    const r = await fetch('/api/auth/verify-code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email: currentEmail, code})
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا در تأیید کد');
+    if(d.stage === 'set_password'){
+      pendingToken = d.pending_token;
+      showStep('password');
+    } else {
+      // ورود موفق
+      window.location.href = '/dashboard';
+    }
+  } catch(err){
+    showErr(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-login-2"></i> ورود';
+  }
+});
+
+// ── مرحله ۳: تنظیم رمز (ثبت‌نام) ──
+document.getElementById('form-password').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw1 = document.getElementById('pw1').value;
+  const pw2 = document.getElementById('pw2').value;
+  const btn = document.getElementById('btn-set-pw');
+  if(pw1.length < 6){ showErr('رمز عبور باید حداقل ۶ کاراکتر باشد'); return; }
+  if(pw1 !== pw2){ showErr('رمزهای واردشده یکسان نیستند'); return; }
+  hideErr(); hideSuccess();
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ثبت‌نام...';
+  try {
+    const r = await fetch('/api/auth/set-password', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pending_token: pendingToken, password: pw1})
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا در ثبت‌نام');
     window.location.href = '/dashboard';
   } catch(err){
-    errText.textContent = err.message;
-    errEl.classList.add('show');
-    btn.innerHTML = '<i class="ti ti-login-2"></i> ورود به داشبورد';
+    showErr(err.message);
+  } finally {
     btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-check"></i> تکمیل ثبت‌نام';
   }
 });
 </script>
