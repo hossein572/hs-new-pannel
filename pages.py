@@ -24,6 +24,8 @@ LOGIN_HTML = r"""<!DOCTYPE html>
   --hs-glow:rgba(155,124,255,0.30);
   --hs-glow-soft:rgba(124,92,231,0.22);
   --hs-danger:#FB7185;
+  --hs-success:#34D399;--hs-success-d:rgba(52,211,153,0.12);
+  --hs-warn:#FBBF24;--hs-warn-d:rgba(251,191,36,0.12);
 }
 [data-theme="light"]{
   --hs-bg:#F5F3FA;--hs-bg2:#EDE9F5;--hs-bg3:#E6E1F0;
@@ -33,6 +35,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
   --hs-text:#14111C;--hs-dim:#6B6880;--hs-mid:#4A4760;
   --hs-border:rgba(109,63,245,0.16);
   --hs-glow:rgba(109,63,245,0.22);--hs-glow-soft:rgba(90,56,208,0.16);
+  --hs-success:#059669;--hs-warn:#D97706;
 }
 html,body{height:100%;overflow-x:hidden}
 body{
@@ -121,30 +124,23 @@ h1{font-size:22px;font-weight:800;color:var(--hs-text);margin-bottom:6px;letter-
 input[type=password],input[type=text],input[type=email]{
   width:100%;padding:16px 48px 16px 48px;border-radius:14px;border:2px solid var(--hs-border);
   background:rgba(0,0,0,.22);color:var(--hs-text);font-family:inherit;font-size:16px;outline:none;transition:.25s}
-input[type=email]{
-  padding:20px 48px 20px 48px;font-size:17px;border-radius:16px;
-  background:linear-gradient(135deg,rgba(109,63,246,.08),rgba(139,92,246,.05));
-  border-color:rgba(109,63,246,.3);letter-spacing:.02em}
-input[type=email]::placeholder{color:var(--hs-dim);font-size:15px;letter-spacing:0}
-input[type=email]:focus{
-  border-color:var(--hs-purple);background:linear-gradient(135deg,rgba(124,92,231,.12),rgba(139,92,246,.08));
-  box-shadow:0 0 0 4px rgba(109,63,246,.15),0 8px 24px -6px rgba(109,63,246,.2)}
+input.ltr{direction:ltr;text-align:left}
+input[type=email]{letter-spacing:.01em}
 [data-theme="light"] input[type=password],[data-theme="light"] input[type=text],[data-theme="light"] input[type=email]{background:rgba(109,63,246,.04)}
 input::placeholder{color:var(--hs-dim)}
 input:focus{border-color:var(--hs-purple);background:rgba(124,92,231,.07);box-shadow:0 0 0 4px var(--hs-glow-soft)}
 .ic-lock{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--hs-dim);font-size:19px;pointer-events:none;transition:.2s}
-input[type=email]~.ic-lock{right:16px;font-size:22px;color:var(--hs-purple);opacity:.5}
+input[type=email]~.ic-lock{font-size:19px}
 input:focus~.ic-lock{color:var(--hs-purple2);animation:wiggle .4s ease}
 @keyframes wiggle{0%,100%{transform:translateY(-50%) rotate(0)}25%{transform:translateY(-50%) rotate(-12deg)}75%{transform:translateY(-50%) rotate(12deg)}}
 .ic-eye{
   position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--hs-dim);font-size:17px;
   cursor:pointer;padding:6px;transition:.2s;line-height:0}
 .ic-eye:hover{color:var(--hs-purple2);transform:translateY(-50%) scale(1.15)}
-input[type=text]#code{
-  padding:24px;font-size:28px;letter-spacing:16px;text-align:center;font-family:'JetBrains Mono',monospace;
-  font-weight:700;border-radius:16px;background:linear-gradient(135deg,rgba(109,63,246,.1),rgba(52,211,153,.05));
-  border-color:rgba(52,211,153,.3)}
-input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px rgba(52,211,153,.15);background:linear-gradient(135deg,rgba(52,211,153,.08),rgba(109,63,246,.05))}
+.code-inp{
+  padding:13px 14px !important;font-size:19px !important;letter-spacing:7px;text-indent:7px;text-align:center;
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;direction:ltr}
+.code-inp::placeholder{letter-spacing:3px;text-indent:0;font-size:13px;font-family:'Inter',system-ui,sans-serif;font-weight:400}
 
 .err{display:none;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-danger);align-items:center;gap:8px;animation:shake .35s}
 .err.show{display:flex}
@@ -173,10 +169,49 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
 
 @keyframes spin{to{transform:rotate(360deg)}}
 
-@media (max-width:420px){
-  .card{padding:32px 22px 26px;border-radius:18px}
+.tabs{display:flex;gap:6px;background:rgba(0,0,0,.18);border:1px solid var(--hs-border);border-radius:13px;padding:5px;margin-bottom:22px}
+[data-theme="light"] .tabs{background:rgba(109,63,246,.06)}
+.tab{flex:1;padding:10px 8px;border-radius:9px;border:none;background:transparent;color:var(--hs-dim);
+  font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.tab i{font-size:15px}
+.tab:hover{color:var(--hs-text)}
+.tab.active{background:linear-gradient(135deg,var(--hs-purple),var(--hs-violet));color:#fff;box-shadow:0 6px 18px -6px var(--hs-glow)}
+.view{display:none}
+.view.active{display:block;animation:fadeup .35s cubic-bezier(.16,1,.3,1)}
+.step{display:none}
+.step.active{display:block;animation:fadeup .35s cubic-bezier(.16,1,.3,1)}
+.btn-ghost{background:var(--hs-purple-d);color:var(--hs-purple2);box-shadow:none;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .36s backwards}
+.btn-ghost::before{display:none}
+.btn-ghost:hover{background:var(--hs-violet-d);box-shadow:none}
+.btn-sm{padding:10px;font-size:12.5px}
+.links-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:8px;flex-wrap:wrap}
+.link-btn{background:none;border:none;color:var(--hs-purple2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:4px 2px;display:inline-flex;align-items:center;gap:5px;transition:.18s}
+.link-btn:hover{filter:brightness(1.2);text-decoration:underline}
+.link-btn i{font-size:13px}
+.resend{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--hs-dim);min-height:28px}
+.resend button{background:none;border:none;color:var(--hs-purple2);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:6px 4px}
+.resend button:disabled{opacity:.4;cursor:not-allowed}
+.warn{display:none;background:var(--hs-warn-d);border:1px solid rgba(251,191,36,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12px;color:var(--hs-warn);align-items:center;gap:8px;line-height:1.7}
+
+@media (max-width:480px){
+  body{padding:14px}
+  .wrap{max-width:100%}
+  .card{padding:30px 20px 24px;border-radius:18px}
   .status-badge span{display:none}
-  .status-badge{padding:9px}
+  .status-badge{padding:9px;top:14px;right:14px}
+  .theme-switch{top:14px;left:14px}
+  h1{font-size:20px}
+  .sub{font-size:12px}
+  input[type=password],input[type=text],input[type=email]{font-size:16px;padding:13px 44px 13px 44px}
+  .code-inp{font-size:18px !important;letter-spacing:5px;text-indent:5px}
+  .tab{font-size:12.5px;padding:9px 6px}
+  .brand{margin-bottom:24px}
+}
+@media (max-width:360px){
+  .card{padding:26px 16px 20px}
+  .brand-name{font-size:14px}
+  .links-row{flex-direction:column;align-items:stretch;text-align:center}
+  .link-btn{justify-content:center}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001s !important;animation-iteration-count:1 !important}
@@ -211,56 +246,170 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
       </div>
       <div><div class="brand-name">HS Panel</div><div class="brand-sub">Proxy Manager <span class="mono">· v1.0</span></div></div>
     </div>
-    <h1>ورود به پنل</h1>
-    <p class="sub" id="sub-title">ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود</p>
+    <h1 id="page-title">ورود به پنل</h1>
+    <p class="sub" id="sub-title">ایمیل و رمز عبور خود را وارد کنید</p>
 
     <div class="err" id="err" role="alert"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
     <div class="success" id="success" role="status" style="display:none"><i class="ti ti-circle-check-filled"></i><span id="success-text"></span></div>
+    <div class="warn" id="smtp-warn" role="status" style="display:none"><i class="ti ti-mail-off"></i><span>سرویس ایمیل سرور فعال نیست؛ ثبت‌نام و ورود با کد فعلاً ممکن نیست. (ورود با رمز عبور کار می‌کند)</span></div>
 
-    <!-- مرحله ۱: ایمیل -->
-    <form id="form-email" novalidate>
-      <div class="field">
-        <label for="email">ایمیل</label>
-        <div class="inp-wrap">
-          <input type="email" id="email" placeholder="example@domain.com" autofocus required autocomplete="email">
-          <i class="ti ti-mail ic-lock"></i>
-        </div>
-      </div>
-      <button class="btn" type="submit" id="btn-email"><i class="ti ti-send"></i> ارسال کد تأیید</button>
-    </form>
+    <div class="tabs" id="auth-tabs">
+      <button class="tab active" id="tab-login" type="button" onclick="switchTab('login')"><i class="ti ti-login-2"></i> ورود</button>
+      <button class="tab" id="tab-register" type="button" onclick="switchTab('register')"><i class="ti ti-user-plus"></i> ثبت‌نام</button>
+    </div>
 
-    <!-- مرحله ۲: کد تأیید -->
-    <form id="form-code" novalidate style="display:none">
-      <div class="field">
-        <label for="code">کد تأیید</label>
-        <div class="inp-wrap">
-          <input type="text" id="code" placeholder="کد ۶ رقمی" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" style="font-size:22px;letter-spacing:8px;text-align:center">
+    <!-- ═══ ورود با رمز ═══ -->
+    <div class="view active" id="view-login">
+      <form id="form-login" novalidate>
+        <div class="field">
+          <label for="li-email">ایمیل</label>
+          <div class="inp-wrap">
+            <input type="email" id="li-email" class="ltr" placeholder="example@domain.com" autocomplete="email" dir="ltr">
+            <i class="ti ti-mail ic-lock"></i>
+          </div>
         </div>
+        <div class="field">
+          <label for="li-pass">رمز عبور</label>
+          <div class="inp-wrap">
+            <input type="password" id="li-pass" placeholder="رمز عبور" autocomplete="current-password">
+            <i class="ti ti-lock ic-lock"></i>
+            <span class="ic-eye" onclick="togglePw('li-pass',this)" title="نمایش رمز"><i class="ti ti-eye"></i></span>
+          </div>
+        </div>
+        <button class="btn" type="submit" id="btn-login"><i class="ti ti-login-2"></i> ورود</button>
+      </form>
+      <div class="links-row">
+        <button class="link-btn" type="button" onclick="showView('login-code')"><i class="ti ti-mail"></i> ورود با کد یکبارمصرف</button>
+        <button class="link-btn" type="button" onclick="showView('forgot')"><i class="ti ti-key"></i> رمز را فراموش کرده‌ام</button>
       </div>
-      <button class="btn" type="submit" id="btn-code"><i class="ti ti-login-2"></i> ورود</button>
-      <button class="btn btn-ghost btn-sm" type="button" id="btn-back-email" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> تغییر ایمیل</button>
-    </form>
+    </div>
 
-    <!-- مرحله ۳: تنظیم رمز (فقط ثبت‌نام) -->
-    <form id="form-password" novalidate style="display:none">
-      <p class="sub" style="margin-bottom:16px">رمز عبور جدید برای حساب خود تعیین کنید</p>
-      <div class="field">
-        <label for="pw1">رمز عبور</label>
-        <div class="inp-wrap">
-          <input type="password" id="pw1" placeholder="حداقل ۶ کاراکتر" minlength="6" required>
-          <i class="ti ti-lock ic-lock"></i>
-        </div>
+    <!-- ═══ ورود با کد ═══ -->
+    <div class="view" id="view-login-code">
+      <div class="step active" id="login-code-step-email">
+        <form id="form-lc-email" novalidate>
+          <div class="field">
+            <label for="lc-email">ایمیل</label>
+            <div class="inp-wrap">
+              <input type="email" id="lc-email" class="ltr" placeholder="example@domain.com" autocomplete="email" dir="ltr">
+              <i class="ti ti-mail ic-lock"></i>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-lc-email"><i class="ti ti-send"></i> ارسال کد ورود</button>
+        </form>
       </div>
-      <div class="field" style="margin-top:12px">
-        <label for="pw2">تکرار رمز عبور</label>
-        <div class="inp-wrap">
-          <input type="password" id="pw2" placeholder="رمز را مجدداً وارد کنید" minlength="6" required>
-          <i class="ti ti-lock ic-lock"></i>
-        </div>
+      <div class="step" id="login-code-step-code">
+        <form id="form-lc-code" novalidate>
+          <div class="field">
+            <label for="lc-code">کد ورود</label>
+            <div class="inp-wrap">
+              <input type="text" id="lc-code" class="code-inp ltr" placeholder="------" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" dir="ltr">
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-lc-code"><i class="ti ti-login-2"></i> تأیید و ورود</button>
+          <div class="resend"><span id="lc-timer"></span><button type="button" id="lc-resend" onclick="resendCode('login')">ارسال مجدد کد</button></div>
+        </form>
       </div>
-      <button class="btn" type="submit" id="btn-set-pw"><i class="ti ti-check"></i> تکمیل ثبت‌نام</button>
-      <button class="btn btn-ghost btn-sm" type="button" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> انصراف</button>
-    </form>
+      <div class="links-row" style="justify-content:center">
+        <button class="link-btn" type="button" onclick="showView('login')"><i class="ti ti-arrow-right"></i> بازگشت به ورود با رمز</button>
+      </div>
+    </div>
+
+    <!-- ═══ ثبت‌نام ═══ -->
+    <div class="view" id="view-register">
+      <div class="step active" id="register-step-email">
+        <form id="form-rg-email" novalidate>
+          <div class="field">
+            <label for="rg-email">ایمیل</label>
+            <div class="inp-wrap">
+              <input type="email" id="rg-email" class="ltr" placeholder="example@domain.com" autocomplete="email" dir="ltr">
+              <i class="ti ti-mail ic-lock"></i>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-rg-email"><i class="ti ti-send"></i> ارسال کد تأیید</button>
+        </form>
+      </div>
+      <div class="step" id="register-step-code">
+        <form id="form-rg-code" novalidate>
+          <div class="field">
+            <label for="rg-code">کد تأیید</label>
+            <div class="inp-wrap">
+              <input type="text" id="rg-code" class="code-inp ltr" placeholder="------" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" dir="ltr">
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-rg-code"><i class="ti ti-check"></i> تأیید کد</button>
+          <div class="resend"><span id="rg-timer"></span><button type="button" id="rg-resend" onclick="resendCode('register')">ارسال مجدد کد</button></div>
+        </form>
+      </div>
+      <div class="step" id="register-step-pass">
+        <form id="form-rg-pass" novalidate>
+          <div class="field">
+            <label for="rg-pw1">رمز عبور</label>
+            <div class="inp-wrap">
+              <input type="password" id="rg-pw1" placeholder="حداقل ۶ کاراکتر" autocomplete="new-password">
+              <i class="ti ti-lock ic-lock"></i>
+              <span class="ic-eye" onclick="togglePw('rg-pw1',this)" title="نمایش رمز"><i class="ti ti-eye"></i></span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="rg-pw2">تکرار رمز عبور</label>
+            <div class="inp-wrap">
+              <input type="password" id="rg-pw2" placeholder="رمز را مجدداً وارد کنید" autocomplete="new-password">
+              <i class="ti ti-lock ic-lock"></i>
+              <span class="ic-eye" onclick="togglePw('rg-pw2',this)" title="نمایش رمز"><i class="ti ti-eye"></i></span>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-rg-pass"><i class="ti ti-check"></i> تکمیل ثبت‌نام</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ═══ فراموشی رمز ═══ -->
+    <div class="view" id="view-forgot">
+      <div class="step active" id="forgot-step-email">
+        <form id="form-fg-email" novalidate>
+          <div class="field">
+            <label for="fg-email">ایمیل</label>
+            <div class="inp-wrap">
+              <input type="email" id="fg-email" class="ltr" placeholder="example@domain.com" autocomplete="email" dir="ltr">
+              <i class="ti ti-mail ic-lock"></i>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-fg-email"><i class="ti ti-send"></i> ارسال کد بازیابی</button>
+        </form>
+      </div>
+      <div class="step" id="forgot-step-reset">
+        <form id="form-fg-reset" novalidate>
+          <div class="field">
+            <label for="fg-code">کد بازیابی</label>
+            <div class="inp-wrap">
+              <input type="text" id="fg-code" class="code-inp ltr" placeholder="------" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" dir="ltr">
+            </div>
+          </div>
+          <div class="field">
+            <label for="fg-pw1">رمز عبور جدید</label>
+            <div class="inp-wrap">
+              <input type="password" id="fg-pw1" placeholder="حداقل ۶ کاراکتر" autocomplete="new-password">
+              <i class="ti ti-lock ic-lock"></i>
+              <span class="ic-eye" onclick="togglePw('fg-pw1',this)" title="نمایش رمز"><i class="ti ti-eye"></i></span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="fg-pw2">تکرار رمز جدید</label>
+            <div class="inp-wrap">
+              <input type="password" id="fg-pw2" placeholder="رمز را مجدداً وارد کنید" autocomplete="new-password">
+              <i class="ti ti-lock ic-lock"></i>
+              <span class="ic-eye" onclick="togglePw('fg-pw2',this)" title="نمایش رمز"><i class="ti ti-eye"></i></span>
+            </div>
+          </div>
+          <button class="btn" type="submit" id="btn-fg-reset"><i class="ti ti-check"></i> تغییر رمز و ورود</button>
+          <div class="resend"><span id="fg-timer"></span><button type="button" id="fg-resend" onclick="resendCode('forgot')">ارسال مجدد کد</button></div>
+        </form>
+      </div>
+      <div class="links-row" style="justify-content:center">
+        <button class="link-btn" type="button" onclick="showView('login')"><i class="ti ti-arrow-right"></i> بازگشت به ورود</button>
+      </div>
+    </div>
 
     <div class="footer"><a href="https://t.me/" target="_blank" rel="noopener"><i class="ti ti-brand-telegram"></i> پشتیبانی</a></div>
   </div>
@@ -289,113 +438,269 @@ const successText = document.getElementById('success-text');
 
 let currentEmail = '';
 let pendingToken = '';
-let devCode = '';
+let smtpOK = true;
+let timers = {};
 
 function showErr(msg){ errText.textContent = msg; errEl.style.display = 'flex'; errEl.classList.add('show'); }
 function hideErr(){ errEl.style.display = 'none'; errEl.classList.remove('show'); }
 function showSuccess(msg){ successText.textContent = msg; successEl.style.display = 'flex'; }
 function hideSuccess(){ successEl.style.display = 'none'; }
-
-function showStep(step){
-  document.getElementById('form-email').style.display = 'none';
-  document.getElementById('form-code').style.display = 'none';
-  document.getElementById('form-password').style.display = 'none';
-  if(step === 'email'){ document.getElementById('form-email').style.display = 'block'; document.getElementById('sub-title').textContent = 'ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود'; }
-  else if(step === 'code'){ document.getElementById('form-code').style.display = 'block'; document.getElementById('sub-title').textContent = 'کد ارسال‌شده به «' + currentEmail + '» را وارد کنید'; document.getElementById('code').focus(); }
-  else if(step === 'password'){ document.getElementById('form-password').style.display = 'block'; document.getElementById('sub-title').textContent = 'ثبت‌نام موفق! رمز عبور خود را تعیین کنید'; document.getElementById('pw1').focus(); }
+function setHeader(t, s){ document.getElementById('page-title').textContent = t; document.getElementById('sub-title').textContent = s; }
+function togglePw(id, el){
+  const i = document.getElementById(id);
+  const show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  el.innerHTML = '<i class="ti ' + (show ? 'ti-eye-off' : 'ti-eye') + '"></i>';
 }
-function showEmailStep(){ hideErr(); hideSuccess(); showStep('email'); }
 
-// ── مرحله ۱: ارسال کد ──
-document.getElementById('form-email').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const emailInput = document.getElementById('email');
-  const email = emailInput.value.trim().toLowerCase();
-  const btn = document.getElementById('btn-email');
-  if(!email || !email.includes('@')){ showErr('ایمیل معتبر وارد کنید'); return; }
+const VIEW_HEADERS = {
+  'login': ['ورود به پنل', 'ایمیل و رمز عبور خود را وارد کنید'],
+  'login-code': ['ورود با کد', 'کد یکبارمصرف به ایمیل شما ارسال می‌شود'],
+  'register': ['ثبت‌نام', 'ایمیل خود را وارد کنید تا کد تأیید ارسال شود'],
+  'forgot': ['بازیابی رمز', 'کد بازیابی به ایمیل شما ارسال می‌شود']
+};
+
+function switchTab(tab){
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  showView(tab === 'login' ? 'login' : 'register', true);
+}
+
+function showView(name, fromTab){
   hideErr(); hideSuccess();
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...';
-  try {
-    const r = await fetch('/api/auth/request-code', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در ارسال کد');
-    currentEmail = email;
-    devCode = d.dev_code || '';
-    if(d.dev_mode || d.dev_code){
-      showSuccess('کد تأیید: ' + (d.dev_code || devCode) + ' (حالت توسعه)');
-    } else {
-      showSuccess('کد تأیید به ایمیل شما ارسال شد ✓');
-    }
-    showStep('code');
-  } catch(err){
-    showErr(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-send"></i> ارسال کد تأیید';
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if(!fromTab){
+    document.getElementById('tab-login').classList.toggle('active', name !== 'register');
+    document.getElementById('tab-register').classList.toggle('active', name === 'register');
   }
+  const steps = document.querySelectorAll('#view-' + name + ' .step');
+  steps.forEach((s, i) => s.classList.toggle('active', i === 0));
+  const h = VIEW_HEADERS[name] || VIEW_HEADERS['login'];
+  setHeader(h[0], h[1]);
+  document.getElementById('smtp-warn').style.display = (!smtpOK && name !== 'login') ? 'flex' : 'none';
+}
+
+function showStep(view, step){
+  document.querySelectorAll('#view-' + view + ' .step').forEach(s => s.classList.remove('active'));
+  document.getElementById(view + '-step-' + step).classList.add('active');
+}
+
+function busy(btn, on, loadingHtml){
+  if(on){ btn.disabled = true; btn.dataset.orig = btn.innerHTML; btn.innerHTML = loadingHtml; }
+  else { btn.disabled = false; if(btn.dataset.orig) btn.innerHTML = btn.dataset.orig; }
+}
+
+async function api(path, body){
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(d.detail || 'خطایی رخ داد');
+  return d;
+}
+
+function validEmail(v){ return v && v.indexOf('@') > 0 && v.indexOf('.') > v.indexOf('@'); }
+function validCode(v){ return v && v.length === 6 && /^[0-9]+$/.test(v); }
+
+function startCountdown(kind, secs){
+  const p = {login:'lc', register:'rg', forgot:'fg'}[kind];
+  const tEl = document.getElementById(p + '-timer');
+  const bEl = document.getElementById(p + '-resend');
+  if(timers[kind]) clearInterval(timers[kind]);
+  let s = secs || 30;
+  bEl.disabled = true;
+  const tick = () => {
+    if(s <= 0){ clearInterval(timers[kind]); tEl.textContent = ''; bEl.disabled = false; return; }
+    tEl.textContent = 'ارسال مجدد تا ' + s + ' ثانیه';
+    s--;
+  };
+  tick();
+  timers[kind] = setInterval(tick, 1000);
+}
+
+async function resendCode(kind){
+  hideErr(); hideSuccess();
+  try {
+    if(kind === 'forgot'){
+      await api('/api/auth/forgot-password', {email: currentEmail});
+      showSuccess('کد بازیابی مجدداً ارسال شد');
+    } else {
+      await api('/api/auth/request-code', {email: currentEmail, mode: kind});
+      showSuccess('کد تأیید مجدداً ارسال شد');
+    }
+    startCountdown(kind, 30);
+  } catch(err){ showErr(err.message); }
+}
+
+['lc-code','rg-code','fg-code'].forEach(id => {
+  document.getElementById(id).addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+  });
 });
 
-// ── مرحله ۲: تأیید کد ──
-document.getElementById('form-code').addEventListener('submit', async (e) => {
+// ── ورود با رمز ──
+document.getElementById('form-login').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const code = document.getElementById('code').value.trim();
-  const btn = document.getElementById('btn-code');
-  if(!code || code.length !== 6 || !/^\d+$/.test(code)){ showErr('کد باید ۶ رقم باشد'); return; }
+  const email = document.getElementById('li-email').value.trim().toLowerCase();
+  const password = document.getElementById('li-pass').value;
+  const btn = document.getElementById('btn-login');
+  if(!validEmail(email)){ showErr('ایمیل معتبر وارد کنید'); return; }
+  if(!password){ showErr('رمز عبور را وارد کنید'); return; }
   hideErr(); hideSuccess();
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال تأیید...';
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ورود...');
   try {
-    const r = await fetch('/api/auth/verify-code', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email: currentEmail, code})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در تأیید کد');
+    await api('/api/auth/login-password', {email: email, password: password});
+    window.location.href = '/dashboard';
+  } catch(err){ showErr(err.message); busy(btn, false); }
+});
+
+// ── ورود با کد: ارسال ──
+document.getElementById('form-lc-email').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('lc-email').value.trim().toLowerCase();
+  const btn = document.getElementById('btn-lc-email');
+  if(!validEmail(email)){ showErr('ایمیل معتبر وارد کنید'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...');
+  try {
+    await api('/api/auth/request-code', {email: email, mode: 'login'});
+    currentEmail = email;
+    showSuccess('کد ورود به ایمیل شما ارسال شد');
+    showStep('login-code', 'code');
+    setHeader('تأیید کد', 'کد ارسال‌شده به «' + email + '» را وارد کنید');
+    document.getElementById('lc-code').value = '';
+    document.getElementById('lc-code').focus();
+    startCountdown('login', 30);
+  } catch(err){ showErr(err.message); }
+  busy(btn, false);
+});
+
+// ── ورود با کد: تأیید ──
+document.getElementById('form-lc-code').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('lc-code').value.trim();
+  const btn = document.getElementById('btn-lc-code');
+  if(!validCode(code)){ showErr('کد باید ۶ رقم باشد'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال تأیید...');
+  try {
+    const d = await api('/api/auth/verify-code', {email: currentEmail, code: code});
     if(d.stage === 'set_password'){
       pendingToken = d.pending_token;
-      showStep('password');
+      switchTab('register');
+      showStep('register', 'pass');
+      setHeader('تعیین رمز', 'رمز عبور حساب جدید را تعیین کنید');
+      document.getElementById('rg-pw1').focus();
     } else {
-      // ورود موفق
       window.location.href = '/dashboard';
     }
-  } catch(err){
-    showErr(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-login-2"></i> ورود';
-  }
+  } catch(err){ showErr(err.message); busy(btn, false); }
 });
 
-// ── مرحله ۳: تنظیم رمز (ثبت‌نام) ──
-document.getElementById('form-password').addEventListener('submit', async (e) => {
+// ── ثبت‌نام: ارسال کد ──
+document.getElementById('form-rg-email').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const pw1 = document.getElementById('pw1').value;
-  const pw2 = document.getElementById('pw2').value;
-  const btn = document.getElementById('btn-set-pw');
+  const email = document.getElementById('rg-email').value.trim().toLowerCase();
+  const btn = document.getElementById('btn-rg-email');
+  if(!validEmail(email)){ showErr('ایمیل معتبر وارد کنید'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...');
+  try {
+    await api('/api/auth/request-code', {email: email, mode: 'register'});
+    currentEmail = email;
+    showSuccess('کد تأیید به ایمیل شما ارسال شد');
+    showStep('register', 'code');
+    setHeader('تأیید ایمیل', 'کد ارسال‌شده به «' + email + '» را وارد کنید');
+    document.getElementById('rg-code').value = '';
+    document.getElementById('rg-code').focus();
+    startCountdown('register', 30);
+  } catch(err){ showErr(err.message); }
+  busy(btn, false);
+});
+
+// ── ثبت‌نام: تأیید کد ──
+document.getElementById('form-rg-code').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('rg-code').value.trim();
+  const btn = document.getElementById('btn-rg-code');
+  if(!validCode(code)){ showErr('کد باید ۶ رقم باشد'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال تأیید...');
+  try {
+    const d = await api('/api/auth/verify-code', {email: currentEmail, code: code});
+    if(d.stage === 'set_password'){
+      pendingToken = d.pending_token;
+      hideSuccess();
+      showStep('register', 'pass');
+      setHeader('تعیین رمز', 'رمز عبور حساب جدید را تعیین کنید');
+      document.getElementById('rg-pw1').focus();
+    } else {
+      window.location.href = '/dashboard';
+    }
+  } catch(err){ showErr(err.message); }
+  busy(btn, false);
+});
+
+// ── ثبت‌نام: تعیین رمز ──
+document.getElementById('form-rg-pass').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw1 = document.getElementById('rg-pw1').value;
+  const pw2 = document.getElementById('rg-pw2').value;
+  const btn = document.getElementById('btn-rg-pass');
   if(pw1.length < 6){ showErr('رمز عبور باید حداقل ۶ کاراکتر باشد'); return; }
   if(pw1 !== pw2){ showErr('رمزهای واردشده یکسان نیستند'); return; }
   hideErr(); hideSuccess();
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ثبت‌نام...';
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ثبت‌نام...');
   try {
-    const r = await fetch('/api/auth/set-password', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({pending_token: pendingToken, password: pw1})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در ثبت‌نام');
+    await api('/api/auth/set-password', {pending_token: pendingToken, password: pw1});
     window.location.href = '/dashboard';
-  } catch(err){
-    showErr(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-check"></i> تکمیل ثبت‌نام';
-  }
+  } catch(err){ showErr(err.message); busy(btn, false); }
 });
+
+// ── فراموشی رمز: ارسال کد ──
+document.getElementById('form-fg-email').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('fg-email').value.trim().toLowerCase();
+  const btn = document.getElementById('btn-fg-email');
+  if(!validEmail(email)){ showErr('ایمیل معتبر وارد کنید'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...');
+  try {
+    await api('/api/auth/forgot-password', {email: email});
+    currentEmail = email;
+    showSuccess('کد بازیابی به ایمیل شما ارسال شد');
+    showStep('forgot', 'reset');
+    setHeader('رمز جدید', 'کد بازیابی و رمز جدید را وارد کنید');
+    document.getElementById('fg-code').value = '';
+    document.getElementById('fg-code').focus();
+    startCountdown('forgot', 30);
+  } catch(err){ showErr(err.message); }
+  busy(btn, false);
+});
+
+// ── فراموشی رمز: رمز جدید ──
+document.getElementById('form-fg-reset').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = document.getElementById('fg-code').value.trim();
+  const pw1 = document.getElementById('fg-pw1').value;
+  const pw2 = document.getElementById('fg-pw2').value;
+  const btn = document.getElementById('btn-fg-reset');
+  if(!validCode(code)){ showErr('کد باید ۶ رقم باشد'); return; }
+  if(pw1.length < 6){ showErr('رمز عبور باید حداقل ۶ کاراکتر باشد'); return; }
+  if(pw1 !== pw2){ showErr('رمزهای واردشده یکسان نیستند'); return; }
+  hideErr(); hideSuccess();
+  busy(btn, true, '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ذخیره...');
+  try {
+    await api('/api/auth/reset-password', {email: currentEmail, code: code, new_password: pw1});
+    window.location.href = '/dashboard';
+  } catch(err){ showErr(err.message); busy(btn, false); }
+});
+
+// وضعیت SMTP برای نمایش راهنما
+fetch('/api/auth/config').then(r => r.json()).then(d => {
+  smtpOK = d.smtp_configured !== false;
+  const cur = document.querySelector('.view.active');
+  if(!smtpOK && cur && cur.id !== 'view-login') document.getElementById('smtp-warn').style.display = 'flex';
+}).catch(() => {});
 </script>
 </body>
 </html>
@@ -775,7 +1080,7 @@ tbody tr:hover{background:var(--hs-purple-d)}
         <button class="tb-btn" title="اعلان‌ها" onclick="showToast('اعلان جدیدی نیست','info')"><i class="ti ti-bell"></i><span class="dot-ind"></span></button>
         <div class="tb-user" onclick="logout()" title="خروج">
           <div class="tb-avatar">A</div>
-          <span class="tb-user-name">مدیر</span>
+          <span class="tb-user-name" id="tb-user-name">مدیر</span>
         </div>
       </div>
     </header>
@@ -872,9 +1177,9 @@ tbody tr:hover{background:var(--hs-purple-d)}
       <div class="page" id="page-gaming">
         <div class="page-head">
           <div><h1 class="page-title"><i class="ti ti-device-gamepad-2"></i> کانفیگ گیمینگ</h1><div class="page-sub">پروفایل‌ها و پریست‌های بهینه برای بازی</div></div>
-          <div class="page-actions"><button class="btn btn-primary btn-sm" onclick="openModal('modal-gaming')"><i class="ti ti-plus"></i> پروفایل جدید</button></div>
+          <div class="page-actions"><button class="btn btn-primary btn-sm" onclick="openModal('modal-gaming')"><i class="ti ti-plus"></i> کانفیگ گیمینگ جدید</button></div>
         </div>
-        <div class="card" id="gaming-list"><div class="empty"><i class="ti ti-device-gamepad"></i><div class="empty-title">هنوز پروفایلی ندارید</div><div class="empty-sub">اولین پروفایل گیمینگ خود را بسازید</div><button class="btn btn-primary btn-sm" onclick="openModal('modal-gaming')"><i class="ti ti-plus"></i> ساخت پروفایل</button></div></div>
+        <div class="card" id="gaming-list"><div class="empty"><i class="ti ti-device-gamepad"></i><div class="empty-title">هنوز کانفیگی ندارید</div><div class="empty-sub">از دکمه «کانفیگ گیمینگ جدید» در بالای صفحه استفاده کنید</div></div></div>
       </div>
 
       <!-- NODES PAGE -->
@@ -911,6 +1216,23 @@ tbody tr:hover{background:var(--hs-purple-d)}
           <div class="field"><label>رمز فعلی</label><input type="password" id="set-cur-pw"></div>
           <div class="field"><label>رمز جدید</label><input type="password" id="set-new-pw"></div>
           <button class="btn btn-primary" onclick="changePw()"><i class="ti ti-check"></i> ذخیره رمز جدید</button>
+        </div>
+        <div class="card" style="max-width:520px;margin-top:14px" id="smtp-card">
+          <div class="card-title"><i class="ti ti-mail"></i> تنظیمات ایمیل (SMTP)</div>
+          <div id="smtp-status" style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"></div>
+          <div class="field"><label>SMTP Host</label><input type="text" id="smtp-host" placeholder="smtp.gmail.com" dir="ltr" style="text-align:left"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="field"><label>Port</label><input type="number" id="smtp-port" value="587" dir="ltr" style="text-align:left"></div>
+            <div class="field"><label>امنیت</label><select id="smtp-tls"><option value="tls">STARTTLS (پیش‌فرض)</option><option value="none">بدون رمزنگاری</option></select></div>
+          </div>
+          <div class="field"><label>نام کاربری</label><input type="text" id="smtp-user" placeholder="you@gmail.com" dir="ltr" style="text-align:left"></div>
+          <div class="field"><label>رمز / App Password <span style="font-weight:400;color:var(--hs-dim)">(خالی = بدون تغییر)</span></label><input type="password" id="smtp-pass" placeholder="••••••••"></div>
+          <div class="field"><label>فرستنده (From)</label><input type="text" id="smtp-from" placeholder="you@gmail.com" dir="ltr" style="text-align:left"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveSmtp()"><i class="ti ti-check"></i> ذخیره</button>
+            <button class="btn btn-outline" onclick="testSmtp()"><i class="ti ti-send"></i> ارسال ایمیل تست</button>
+          </div>
+          <div style="font-size:11px;color:var(--hs-dim);margin-top:12px;line-height:1.8">برای Gmail از App Password استفاده کنید. پورت 465 به‌صورت خودکار با SSL وصل می‌شود.</div>
         </div>
       </div>
 
@@ -1085,11 +1407,11 @@ tbody tr:hover{background:var(--hs-purple-d)}
   <div class="modal">
     <div class="modal-head">
       <div class="modal-icon" style="background:linear-gradient(135deg,#9B7CFF,#5A38D0)"><i class="ti ti-device-gamepad-2"></i></div>
-      <div><div class="modal-title">پروفایل گیمینگ جدید</div><div class="modal-sub">پریست اختصاصی برای بازی</div></div>
+      <div><div class="modal-title">کانفیگ گیمینگ جدید</div><div class="modal-sub">پریست اختصاصی برای بازی</div></div>
       <button class="modal-close" onclick="closeModal('modal-gaming')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
-      <div class="field"><label>نام پروفایل</label><input type="text" id="gp-name" placeholder="مثلاً: Valorant Low Ping"></div>
+      <div class="field"><label>نام کانفیگ</label><input type="text" id="gp-name" placeholder="مثلاً: Valorant Low Ping"></div>
       <div class="field"><label>بازی هدف</label>
         <select id="gp-game">
           <option>Valorant</option><option>CS2</option><option>PUBG</option><option>Fortnite</option>
@@ -1575,7 +1897,7 @@ async function changePw(){
   const cur = document.getElementById('set-cur-pw').value;
   const nw = document.getElementById('set-new-pw').value;
   if(!cur || !nw){ showToast('همه فیلدها را پر کنید','warn'); return; }
-  if(nw.length < 4){ showToast('رمز جدید حداقل ۴ کاراکتر','warn'); return; }
+  if(nw.length < 6){ showToast('رمز جدید حداقل ۶ کاراکتر','warn'); return; }
   try {
     const r = await fetch('/api/change-password', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({current_password: cur, new_password: nw})});
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
@@ -1599,7 +1921,7 @@ function saveGamingProfiles(){
 function renderGaming(){
   const el = document.getElementById('gaming-list');
   if(!gamingProfiles.length){
-    el.innerHTML = '<div class="empty"><i class="ti ti-device-gamepad"></i><div class="empty-title">هنوز پروفایلی ندارید</div><div class="empty-sub">اولین پروفایل گیمینگ خود را بسازید</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-gaming\')"><i class="ti ti-plus"></i> ساخت پروفایل</button></div>';
+    el.innerHTML = '<div class="empty"><i class="ti ti-device-gamepad"></i><div class="empty-title">هنوز کانفیگی ندارید</div><div class="empty-sub">از دکمه «کانفیگ گیمینگ جدید» در بالای صفحه استفاده کنید</div></div>';
     return;
   }
   el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' + gamingProfiles.map((p,i) =>
@@ -1628,7 +1950,7 @@ function saveGamingProfile(){
   saveGamingProfiles();
   renderGaming();
   closeModal('modal-gaming');
-  showToast('پروفایل گیمینگ ذخیره شد','success');
+  showToast('کانفیگ گیمینگ ذخیره شد','success');
   ['gp-name','gp-desc'].forEach(id => document.getElementById(id).value = '');
 }
 function deleteGaming(i){
@@ -1735,6 +2057,67 @@ async function pollUpdateLog(){
   } catch(e){ setTimeout(pollUpdateLog, 3000); }
 }
 
+/* ════ SMTP SETTINGS ════ */
+async function initSmtpCard(){
+  try {
+    const me = await (await fetch('/api/me')).json();
+    const un = document.getElementById('tb-user-name');
+    if(un && me.email) un.textContent = me.email.split('@')[0];
+    if(!me.is_admin){ const c = document.getElementById('smtp-card'); if(c) c.style.display = 'none'; return; }
+  } catch(e){ return; }
+  await loadSmtp();
+}
+async function loadSmtp(){
+  try {
+    const r = await fetch('/api/settings/smtp');
+    if(!r.ok) return;
+    const d = await r.json();
+    document.getElementById('smtp-host').value = d.host || '';
+    document.getElementById('smtp-port').value = d.port || 587;
+    document.getElementById('smtp-tls').value = d.use_tls ? 'tls' : 'none';
+    document.getElementById('smtp-user').value = d.user || '';
+    document.getElementById('smtp-from').value = d.from || '';
+    updateSmtpStatus(d);
+  } catch(e){}
+}
+function updateSmtpStatus(d){
+  const el = document.getElementById('smtp-status');
+  if(!el) return;
+  if(d.configured){
+    el.innerHTML = '<span class="badge badge-green badge-dot">فعال</span> <span style="font-size:11.5px;color:var(--hs-dim)">ارسال واقعی ایمیل فعال است' + (d.env_managed ? ' (از Environment)' : '') + '</span>';
+  } else {
+    el.innerHTML = '<span class="badge badge-amber badge-dot">غیرفعال</span> <span style="font-size:11.5px;color:var(--hs-dim)">برای ارسال کد تأیید، SMTP را تنظیم و ذخیره کنید</span>';
+  }
+}
+async function saveSmtp(){
+  const body = {
+    host: document.getElementById('smtp-host').value.trim(),
+    port: parseInt(document.getElementById('smtp-port').value) || 587,
+    use_tls: document.getElementById('smtp-tls').value === 'tls',
+    user: document.getElementById('smtp-user').value.trim(),
+    pass: document.getElementById('smtp-pass').value,
+    from_addr: document.getElementById('smtp-from').value.trim()
+  };
+  try {
+    const r = await fetch('/api/settings/smtp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    document.getElementById('smtp-pass').value = '';
+    showToast('تنظیمات ایمیل ذخیره شد','success');
+    loadSmtp();
+  } catch(e){ showToast(e.message,'error'); }
+}
+async function testSmtp(){
+  const to = prompt('ایمیل مقصد برای ارسال تست:', document.getElementById('smtp-user').value || '');
+  if(!to) return;
+  try {
+    const r = await fetch('/api/settings/smtp/test', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({to: to})});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast('ایمیل تست ارسال شد','success');
+  } catch(e){ showToast(e.message,'error'); }
+}
+
 /* ════ INIT ════ */
 async function refreshAll(){
   await Promise.all([loadStats(), loadActivity(), loadLinks()]);
@@ -1742,6 +2125,7 @@ async function refreshAll(){
 async function init(){
   try { await refreshAll(); } catch(e){ console.error('refreshAll', e); }
   try { loadGamingProfiles(); } catch(e){ console.error('gaming', e); }
+  try { await initSmtpCard(); } catch(e){ console.error('smtp', e); }
   // Get hourly data from stats
   try {
     const r = await authFetch('/stats');
