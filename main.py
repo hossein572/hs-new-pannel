@@ -83,6 +83,18 @@ app.add_middleware(
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
+# اگه /data writable نیست (مثل محیط تست محلی)، از data/ محلی استفاده کن
+_test_write = DATA_DIR / ".write_test"
+try:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _test_write.write_text("ok")
+    _test_write.unlink()
+except Exception:
+    # Fallback: از پوشه‌ی data کنار main.py استفاده کن
+    DATA_DIR = Path(__file__).parent / "data"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    logger.warning(f"دایرکتوری /data writable نیست — از {DATA_DIR} استفاده می‌شود")
+
 DATA_FILE = DATA_DIR / "hs_state.json"
 SECRET_FILE = DATA_DIR / ".hs_secret"
 SAVE_LOCK = asyncio.Lock()
@@ -225,8 +237,23 @@ async def load_state():
     global LINKS, AUTH, SUBS, USERS
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        if DATA_FILE.exists():
-            async with aiofiles.open(DATA_FILE, "r", encoding="utf-8") as f:
+        logger.info(f"Loading state from: {DATA_DIR}")
+
+        state_file = DATA_FILE
+        loaded_from = "main"
+
+        if not DATA_FILE.exists():
+            # اگه فایل اصلی نیست، از آخرین backup استفاده کن
+            backup_dir = DATA_DIR / "backups"
+            if backup_dir.exists():
+                backups = sorted(backup_dir.glob("hs_state-*.json"), reverse=True)
+                if backups:
+                    state_file = backups[0]
+                    loaded_from = f"backup ({backups[0].name})"
+                    logger.warning(f"Main state file not found — restoring from backup: {state_file}")
+
+        if state_file.exists():
+            async with aiofiles.open(state_file, "r", encoding="utf-8") as f:
                 raw = await f.read()
             data = json.loads(raw)
             LINKS.update(data.get("links", {}))
@@ -240,11 +267,15 @@ async def load_state():
             CONFIG["disable_logging"] = bool(data.get("disable_logging", False))
             apply_logging_state()
             logger.info(
-                f"State loaded: {len(LINKS)} links, {len(SUBS)} subs, "
+                f"State loaded ({loaded_from}): {len(LINKS)} links, {len(SUBS)} subs, "
                 f"{len(NODES)} nodes, {len(NODE_KEYS)} node keys, {len(USERS)} users"
             )
+        else:
+            logger.warning(f"No state file found at {state_file} — starting fresh")
     except Exception as e:
-        logger.warning(f"Could not load state: {e}")
+        logger.error(f"Could not load state: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def save_state():
     async with SAVE_LOCK:
@@ -398,12 +429,11 @@ def is_valid_email(email: str) -> bool:
 
 async def send_verification_email(email: str, code: str, purpose: str = "login") -> bool:
     """
-    ارسال کد تایید به ایمیل.
-    اگه SMTP تنظیم نشده باشه، در حالت development کد رو log میکنه و در
-    فایل dev_codes.json ذخیره میکنه تا قابل بررسی باشه.
+    ارسال کد تأیید به ایمیل.
+    اگه SMTP تنظیم نشده باشه، کد رو در dev_codes.json ذخیره میکنه.
     """
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_port = int(os.environ.get("SMTP_PORT", "587") or "587")
     smtp_user = os.environ.get("SMTP_USER", "").strip()
     smtp_pass = os.environ.get("SMTP_PASS", "").strip()
     smtp_from = os.environ.get("SMTP_FROM", smtp_user or "noreply@hspanel.local").strip()
@@ -414,31 +444,31 @@ async def send_verification_email(email: str, code: str, purpose: str = "login")
     elif purpose == "login":
         subject = "کد ورود HS Panel"
         body_text = f"کد ورود شما: {code}\nاگه شما این درخواست رو ندادید، این پیام رو نادیده بگیرید."
-    else:  # reset
+    else:
         subject = "کد بازیابی رمز HS Panel"
         body_text = f"کد بازیابی رمز: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
 
+    # همیشه کد رو در dev_codes.json ذخیره کن (backup)
+    dev_path = DATA_DIR / "dev_codes.json"
+    try:
+        dev_codes = {}
+        if dev_path.exists():
+            with open(dev_path, "r", encoding="utf-8") as f:
+                dev_codes = json.load(f)
+        dev_codes[email] = {"code": code, "purpose": purpose, "at": datetime.now().isoformat()}
+        if len(dev_codes) > 20:
+            keys_sorted = sorted(dev_codes.keys(), key=lambda k: dev_codes[k].get("at", ""))
+            for k in keys_sorted[:-20]:
+                dev_codes.pop(k, None)
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(dev_path, "w", encoding="utf-8") as f:
+            json.dump(dev_codes, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Could not save dev_codes: {e}")
+
     if not smtp_host or not smtp_user:
-        # حالت development: کد رو log کن و در فایل ذخیره کن
+        # حالت development: لاگ بزن و برگرد
         logger.info(f"[DEV-MAIL] To: {email} | Code: {code} | Purpose: {purpose}")
-        dev_path = DATA_DIR / "dev_codes.json"
-        try:
-            dev_codes = {}
-            if dev_path.exists():
-                with open(dev_path, "r", encoding="utf-8") as f:
-                    dev_codes = json.load(f)
-            # فقط آخرین ۲۰ کد رو نگه دار
-            dev_codes[email] = {"code": code, "purpose": purpose, "at": datetime.now().isoformat()}
-            if len(dev_codes) > 20:
-                # حذف قدیمی‌ترین‌ها
-                keys_sorted = sorted(dev_codes.keys(), key=lambda k: dev_codes[k].get("at", ""))
-                for k in keys_sorted[:-20]:
-                    dev_codes.pop(k, None)
-            DATA_DIR.mkdir(parents=True, exist_ok=True)
-            with open(dev_path, "w", encoding="utf-8") as f:
-                json.dump(dev_codes, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.warning(f"Could not save dev_codes: {e}")
         return True
 
     # ارسال واقعی ایمیل با SMTP
@@ -547,9 +577,52 @@ async def startup():
         limits=limits, timeout=timeout, follow_redirects=True,
     )
     await load_state()
+    # مطمئن شو state فایل وجود داره (حتی اگه خالی باشه)
+    await force_save_state()
+    # هر ۵ دقیقه یکبار state رو سیو کن (backup ایمنی)
+    asyncio.create_task(_periodic_backup())
     await _restart_mtproto_instances()
     log_activity("system", "سرور راه‌اندازی شد", "ok")
-    logger.info(f"HS Panel started on port {CONFIG['port']}")
+    logger.info(f"HS Panel started on port {CONFIG['port']} — data dir: {DATA_DIR}")
+
+async def force_save_state():
+    """بدون debounce فوراً state رو ذخیره میکنه (برای backup ایمنی)"""
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        data = {
+            "links": dict(LINKS),
+            "subs": dict(SUBS),
+            "node_keys": dict(NODE_KEYS),
+            "nodes": dict(NODES),
+            "users": dict(USERS),
+            "password_hash": AUTH["password_hash"],
+            "disable_logging": CONFIG.get("disable_logging", False),
+            "saved_at": datetime.now().isoformat(),
+        }
+        # main state file
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        # backup copy با timestamp (اخرین ۳ نسخه)
+        backup_dir = DATA_DIR / "backups"
+        backup_dir.mkdir(exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_file = backup_dir / f"hs_state-{ts}.json"
+        with open(backup_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        # فقط ۳ تا backup آخر رو نگه دار
+        backups = sorted(backup_dir.glob("hs_state-*.json"))
+        while len(backups) > 3:
+            oldest = backups.pop(0)
+            oldest.unlink(missing_ok=True)
+        logger.info(f"State saved: {len(LINKS)} links, {len(USERS)} users — backup: {backup_file.name}")
+    except Exception as e:
+        logger.error(f"FORCE SAVE FAILED: {e}")
+
+async def _periodic_backup():
+    """هر ۵ دقیقه state رو ذخیره میکنه"""
+    while True:
+        await asyncio.sleep(300)  # 5 minutes
+        await force_save_state()
 
 async def _restart_mtproto_instances():
     """بعد از بالا اومدن پنل، به‌ازای هر لینک MTProto فعال یک پروسه‌ی جدای
