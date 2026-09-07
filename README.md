@@ -47,6 +47,19 @@ SMTP_FROM=you@gmail.com
 
 > نکته: مقادیر Environment بر تنظیمات داشبورد اولویت دارند.
 
+## تست محلی (Local Dev)
+
+```bash
+# ترمینال ۱: SMTP تستی (کدها را در ترمینال چاپ می‌کند)
+python dev_smtp.py
+
+# ترمینال ۲: پنل با ری‌لود خودکار
+SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_USER=test SMTP_PASS=test SMTP_FROM=test@local \
+PORT=8000 DATA_DIR=./data RELOAD=1 python main.py
+```
+
+با `RELOAD=1`، با هر تغییر فایل `.py` سرور خودکار ری‌استارت می‌شود.
+
 ## ساختار پروژه
 
 ```
