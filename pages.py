@@ -816,6 +816,7 @@ a{color:inherit;text-decoration:none}
 .tb-btn{width:38px;height:38px;border-radius:10px;background:transparent;border:1px solid transparent;
   color:var(--hs-mid);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:.2s;position:relative}
 .tb-btn:hover{background:var(--hs-purple-d);color:var(--hs-text);border-color:var(--hs-border2)}
+.tb-btn.logout:hover{color:var(--hs-danger);border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.08)}
 .tb-btn .dot-ind{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--hs-danger);box-shadow:0 0 0 2px var(--hs-bg)}
 .tb-user{display:flex;align-items:center;gap:9px;padding:6px 10px 6px 6px;border-radius:10px;
   background:rgba(0,0,0,.18);border:1px solid var(--hs-border2);cursor:pointer;transition:.2s}
@@ -1077,6 +1078,7 @@ tbody tr:hover{background:var(--hs-purple-d)}
       </div>
       <div class="tb-actions">
         <button class="tb-btn" onclick="toggleTheme()" title="تغییر تم"><i class="ti" id="top-theme-ic"></i></button>
+        <button class="tb-btn logout" onclick="logout()" title="خروج از حساب"><i class="ti ti-logout"></i></button>
         <button class="tb-btn" title="اعلان‌ها" onclick="showToast('اعلان جدیدی نیست','info')"><i class="ti ti-bell"></i><span class="dot-ind"></span></button>
         <div class="tb-user" onclick="logout()" title="خروج">
           <div class="tb-avatar">A</div>
