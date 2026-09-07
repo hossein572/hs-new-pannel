@@ -3748,6 +3748,11 @@ if __name__ == "__main__":
     import threading
     main_port = CONFIG["port"]
 
+    logger.info("==============================================================")
+    logger.info(f"HS Panel login (Ctrl+Click): http://localhost:{main_port}/login")
+    logger.info(f"HS Panel dashboard:          http://localhost:{main_port}/dashboard")
+    logger.info("==============================================================")
+
     if os.environ.get("RELOAD", "").strip().lower() in ("1", "true", "yes", "on"):
         # حالت توسعه محلی: با هر تغییر فایل، سرور خودکار ری‌استارت می‌شود.
         # (پورت 80 اضافه در این حالت لازم نیست)
