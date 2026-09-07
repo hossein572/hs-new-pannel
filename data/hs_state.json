@@ -1,0 +1,22 @@
+{
+  "links": {
+    "92e0dec6-fc12-5263-de61-4ae11f13afec": {
+      "label": "لینک پیش‌فرض",
+      "limit_bytes": 0,
+      "used_bytes": 0,
+      "created_at": "2026-09-07T14:03:58.525706",
+      "active": true,
+      "expires_at": null,
+      "note": "",
+      "is_default": true,
+      "sub_id": null,
+      "protocol": "vless-ws"
+    }
+  },
+  "subs": {},
+  "node_keys": {},
+  "nodes": {},
+  "password_hash": "7ef627bfd43fbe0df9b6543fcd075b4a7e5b9b690e1871058b57bea6685f1085",
+  "disable_logging": false,
+  "saved_at": "2026-09-07T14:03:58.528577"
+}
