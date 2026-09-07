@@ -30,22 +30,31 @@ python main.py
 - اولین کاربر ثبت‌نام‌شده = مدیر
 - پورت پیش‌فرض: `8000`
 
-## تنظیم SMTP (ارسال کد تأیید)
+## تنظیم SMTP (ارسال کد تأیید به ایمیل واقعی)
 
-کد تأیید به‌صورت واقعی ایمیل می‌شود. دو راه برای تنظیم:
+کد تأیید به‌صورت واقعی به ایمیلی که کاربر وارد می‌کند ارسال می‌شود. سه راه برای تنظیم:
 
-۱. از داشبورد (توسط مدیر): تنظیمات ← تنظیمات ایمیل (SMTP) + دکمه «ارسال ایمیل تست»
-۲. با Environment Variable:
+۱. **فایل `.env` (پیشنهاد می‌شود):** فایل `.env.example` را با نام `.env` کنار `main.py` کپی کن و مقادیر Gmail خودت را بنویس؛ با هر اجرا خودکار لود می‌شود:
+   ```bash
+   cp .env.example .env   # ویندوز: Copy-Item .env.example .env
+   ```
+۲. از داشبورد (توسط مدیر): تنظیمات ← تنظیمات ایمیل (SMTP) + دکمه «ارسال ایمیل تست»
+۳. با Environment Variable:
+   ```bash
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=xxxx-xxxx-xxxx-xxxx   # App Password جیمیل
+   SMTP_FROM=you@gmail.com
+   ```
 
-```bash
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=you@gmail.com
-SMTP_PASS=xxxx-xxxx-xxxx-xxxx   # App Password جیمیل
-SMTP_FROM=you@gmail.com
-```
+> نکته: اولویت با Environment است، بعد `.env`، بعد تنظیمات داشبورد.
 
-> نکته: مقادیر Environment بر تنظیمات داشبورد اولویت دارند.
+### گرفتن App Password جیمیل (رمز عادی کار نمی‌کند)
+
+۱. Two-Step Verification را روشن کن: https://myaccount.google.com/signinoptions/two-step-verification
+۲. یک App Password بساز: https://myaccount.google.com/apppasswords
+۳. کد ۱۶ حرفی را **بدون فاصله** در `SMTP_PASS` بگذار.
 
 ## تست محلی (Local Dev)
 

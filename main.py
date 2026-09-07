@@ -79,6 +79,38 @@ app = FastAPI(title="HS Panel", docs_url=None, redoc_url=None)
 # به همین نمونه‌ی در حال اجرا اشاره می‌کنن.
 sys.modules.setdefault("main", sys.modules[__name__])
 
+# ── .env ────────────────────────────────────────────────────────────────────
+# اگه فایل `.env` کنار main.py باشه، خودکار لود میشه تا لازم نباشه هر بار
+# متغیرها (مخصوصاً SMTP) رو دستی در ترمینال ست کنی. بدون نیاز به پکیج اضافه.
+# اولویت: متغیر محیطی واقعی > مقادیر .env (اگه چیزی در env ست شده، دست نمی‌خوره).
+def _load_dotenv() -> None:
+    try:
+        env_path = Path(__file__).parent / ".env"
+        if not env_path.is_file():
+            return
+        loaded = 0
+        # utf-8-sig: اگه فایل با Notepad ویندوز ساخته شده باشه (BOM)، درست خوانده میشه
+        for raw in env_path.read_text(encoding="utf-8-sig").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.lower().startswith("export "):
+                line = line[7:].strip()
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+                val = val[1:-1]
+            if key and key not in os.environ:
+                os.environ[key] = val
+                loaded += 1
+        if loaded:
+            logger.info(f"فایل .env لود شد ({loaded} متغیر)")
+    except Exception as e:
+        logger.warning(f"خواندن .env ناموفق بود: {e}")
+
+_load_dotenv()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
