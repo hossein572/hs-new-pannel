@@ -3728,14 +3728,14 @@ async def api_support_send(request: Request, _=Depends(require_auth)):
 async def login_page(request: Request):
     if await is_valid_session(request.cookies.get(SESSION_COOKIE)):
         return RedirectResponse(url="/dashboard")
-    return HTMLResponse(content=LOGIN_HTML)
+    return HTMLResponse(content=LOGIN_HTML, headers={"Cache-Control": "no-store"})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     if not await is_valid_session(request.cookies.get(SESSION_COOKIE)):
         return RedirectResponse(url="/login")
     await ensure_default_link()
-    return HTMLResponse(content=DASHBOARD_HTML)
+    return HTMLResponse(content=DASHBOARD_HTML, headers={"Cache-Control": "no-store"})
 
 @app.get("/test-ws", response_class=HTMLResponse)
 async def test_ws_redirect():
@@ -3747,6 +3747,13 @@ if __name__ == "__main__":
     # بنابراین هم پورت اصلی (CONFIG["port"] = 8000) و هم پورت 80 گوش میدیم.
     import threading
     main_port = CONFIG["port"]
+
+    if os.environ.get("RELOAD", "").strip().lower() in ("1", "true", "yes", "on"):
+        # حالت توسعه محلی: با هر تغییر فایل، سرور خودکار ری‌استارت می‌شود.
+        # (پورت 80 اضافه در این حالت لازم نیست)
+        logger.info("RELOAD mode: با هر تغییر فایل، سرور خودکار ری‌استارت می‌شود")
+        uvicorn.run("main:app", host="0.0.0.0", port=main_port, log_level="info", reload=True)
+        raise SystemExit(0)
 
     def run_main():
         uvicorn.run(
