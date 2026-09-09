@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# HS Panel local dev
+smtp_received.jsonl
+.env
