@@ -23,7 +23,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
   --hs-border:rgba(155,124,255,0.18);
   --hs-glow:rgba(155,124,255,0.30);
   --hs-glow-soft:rgba(124,92,231,0.22);
-  --hs-danger:#FB7185;
+  --hs-danger:#FB7185;--hs-success:#34D399;
 }
 [data-theme="light"]{
   --hs-bg:#F5F3FA;--hs-bg2:#EDE9F5;--hs-bg3:#E6E1F0;
@@ -88,7 +88,7 @@ body{
 @keyframes rotang{to{--ang:360deg}}
 @property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
 
-.brand{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}
 .brand-img{
   width:48px;height:48px;border-radius:14px;overflow:hidden;border:1px solid var(--hs-border);
   flex-shrink:0;position:relative;box-shadow:0 0 0 4px var(--hs-card-in),0 0 24px var(--hs-violet-d);
@@ -100,55 +100,49 @@ body{
 .brand-sub .mono{color:var(--hs-purple);font-weight:600}
 
 h1{font-size:22px;font-weight:800;color:var(--hs-text);margin-bottom:6px;letter-spacing:-.02em;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .1s backwards}
-.sub{font-size:12.5px;color:var(--hs-mid);margin-bottom:26px;line-height:1.7;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .18s backwards}
+.sub{font-size:12.5px;color:var(--hs-mid);margin-bottom:22px;line-height:1.7;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .18s backwards}
 @keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-.hint{
-  display:flex;align-items:center;gap:10px;background:var(--hs-card-in);border:1px dashed var(--hs-border);
-  border-radius:12px;padding:10px 14px;margin-bottom:24px;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .24s backwards}
-.hint i{color:var(--hs-dim);font-size:15px}
-.hint-label{font-size:11px;color:var(--hs-dim);flex:1}
-.hint-val{
-  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--hs-purple);
-  background:var(--hs-violet-d);border:1px solid rgba(124,92,231,0.3);padding:4px 11px;border-radius:7px;
-  cursor:pointer;transition:.18s;letter-spacing:.06em}
-.hint-val:hover{filter:brightness(1.15);transform:translateY(-1px) scale(1.04)}
-.hint-val:active{transform:translateY(0) scale(.96)}
+.tabs{display:flex;gap:6px;background:var(--hs-card-in);border:1px solid var(--hs-border);border-radius:13px;padding:5px;margin-bottom:22px;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .22s backwards}
+.tab{flex:1;padding:9px 10px;border-radius:9px;border:none;background:transparent;color:var(--hs-dim);
+  font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.22s}
+.tab:hover{color:var(--hs-text)}
+.tab.active{background:linear-gradient(135deg,var(--hs-violet-d),var(--hs-purple-d));color:var(--hs-purple2);box-shadow:0 2px 12px -4px var(--hs-glow)}
+.tab i{font-size:15px}
 
-.field{margin-bottom:20px;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .3s backwards}
+.field{margin-bottom:16px;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .3s backwards}
 .field label{display:block;font-size:10.5px;font-weight:700;color:var(--hs-mid);margin-bottom:9px;text-transform:uppercase;letter-spacing:.08em}
 .inp-wrap{position:relative}
-input[type=password],input[type=text],input[type=email]{
+input[type=password],input[type=text]{
   width:100%;padding:16px 48px 16px 48px;border-radius:14px;border:2px solid var(--hs-border);
   background:rgba(0,0,0,.22);color:var(--hs-text);font-family:inherit;font-size:16px;outline:none;transition:.25s}
-input[type=email]{
-  padding:20px 48px 20px 48px;font-size:17px;border-radius:16px;
+input.lg{
+  padding:19px 48px 19px 48px;font-size:16.5px;border-radius:16px;letter-spacing:.02em;
   background:linear-gradient(135deg,rgba(109,63,246,.08),rgba(139,92,246,.05));
-  border-color:rgba(109,63,246,.3);letter-spacing:.02em}
-input[type=email]::placeholder{color:var(--hs-dim);font-size:15px;letter-spacing:0}
-input[type=email]:focus{
+  border-color:rgba(109,63,246,.3)}
+input.lg::placeholder{color:var(--hs-dim);font-size:14.5px;letter-spacing:0}
+input.lg:focus{
   border-color:var(--hs-purple);background:linear-gradient(135deg,rgba(124,92,231,.12),rgba(139,92,246,.08));
   box-shadow:0 0 0 4px rgba(109,63,246,.15),0 8px 24px -6px rgba(109,63,246,.2)}
-[data-theme="light"] input[type=password],[data-theme="light"] input[type=text],[data-theme="light"] input[type=email]{background:rgba(109,63,246,.04)}
+input.mono-input{font-family:'JetBrains Mono',monospace;letter-spacing:.04em;direction:ltr;text-align:left}
+[data-theme="light"] input[type=password],[data-theme="light"] input[type=text]{background:rgba(109,63,246,.04)}
 input::placeholder{color:var(--hs-dim)}
 input:focus{border-color:var(--hs-purple);background:rgba(124,92,231,.07);box-shadow:0 0 0 4px var(--hs-glow-soft)}
 .ic-lock{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--hs-dim);font-size:19px;pointer-events:none;transition:.2s}
-input[type=email]~.ic-lock{right:16px;font-size:22px;color:var(--hs-purple);opacity:.5}
+input.lg~.ic-lock{font-size:21px;color:var(--hs-purple);opacity:.55}
 input:focus~.ic-lock{color:var(--hs-purple2);animation:wiggle .4s ease}
 @keyframes wiggle{0%,100%{transform:translateY(-50%) rotate(0)}25%{transform:translateY(-50%) rotate(-12deg)}75%{transform:translateY(-50%) rotate(12deg)}}
 .ic-eye{
   position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--hs-dim);font-size:17px;
-  cursor:pointer;padding:6px;transition:.2s;line-height:0}
+  cursor:pointer;padding:6px;transition:.2s;line-height:0;background:none;border:none}
 .ic-eye:hover{color:var(--hs-purple2);transform:translateY(-50%) scale(1.15)}
-input[type=text]#code{
-  padding:24px;font-size:28px;letter-spacing:16px;text-align:center;font-family:'JetBrains Mono',monospace;
-  font-weight:700;border-radius:16px;background:linear-gradient(135deg,rgba(109,63,246,.1),rgba(52,211,153,.05));
-  border-color:rgba(52,211,153,.3)}
-input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px rgba(52,211,153,.15);background:linear-gradient(135deg,rgba(52,211,153,.08),rgba(109,63,246,.05))}
+.remember{display:flex;align-items:center;gap:8px;margin:2px 0 14px;font-size:11.5px;color:var(--hs-dim);cursor:pointer;user-select:none}
+.remember input{width:15px;height:15px;accent-color:var(--hs-purple);cursor:pointer}
 
-.err{display:none;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-danger);align-items:center;gap:8px;animation:shake .35s}
+.err{display:none;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:11px;padding:11px 14px;margin-bottom:16px;font-size:12.5px;color:var(--hs-danger);align-items:center;gap:8px;animation:shake .35s}
 .err.show{display:flex}
-.success{display:flex;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-success);align-items:center;gap:8px}
+.success{display:none;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);border-radius:11px;padding:11px 14px;margin-bottom:16px;font-size:12.5px;color:var(--hs-success);align-items:center;gap:8px}
+.success.show{display:flex}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
 .btn{
@@ -156,7 +150,7 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
   background:linear-gradient(135deg,var(--hs-purple),var(--hs-purple2),var(--hs-violet));
   background-size:200% 200%;color:#fff;font-family:inherit;font-size:14.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 10px 28px -6px var(--hs-violet-d);
-  transition:all .22s;position:relative;overflow:hidden;margin-top:6px;
+  transition:all .22s;position:relative;overflow:hidden;margin-top:4px;
   animation:btngrad 4s ease infinite,fadeup .5s cubic-bezier(.16,1,.3,1) .36s backwards}
 @keyframes btngrad{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .btn::before{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,255,255,.22),transparent);width:50%;transform:translateX(-160%)}
@@ -165,16 +159,22 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
 .btn:hover{transform:translateY(-2px);box-shadow:0 14px 34px -6px var(--hs-violet-d)}
 .btn:active{transform:translateY(0) scale(.98)}
 .btn:disabled{opacity:.55;cursor:not-allowed;transform:none;animation:btngrad 4s ease infinite}
-.btn:focus-visible,input:focus-visible,.theme-btn:focus-visible,.hint-val:focus-visible{outline:2px solid var(--hs-purple);outline-offset:2px}
+.btn:focus-visible,input:focus-visible,.theme-btn:focus-visible,.tab:focus-visible{outline:2px solid var(--hs-purple);outline-offset:2px}
 
-.footer{margin-top:24px;padding-top:20px;border-top:1px solid var(--hs-border);display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--hs-dim);animation:fadeup .5s cubic-bezier(.16,1,.3,1) .42s backwards}
+.tips{margin-top:18px;display:flex;flex-direction:column;gap:7px;animation:fadeup .5s cubic-bezier(.16,1,.3,1) .42s backwards}
+.tip{display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--hs-dim);line-height:1.6}
+.tip i{font-size:13px;color:var(--hs-purple);opacity:.75;margin-top:1px;flex-shrink:0}
+.tip b{color:var(--hs-mid);font-weight:600}
+.tip .mono{color:var(--hs-purple2)}
+
+.footer{margin-top:20px;padding-top:16px;border-top:1px solid var(--hs-border);display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--hs-dim)}
 .footer a{color:var(--hs-purple);font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;transition:.18s}
 .footer a:hover{filter:brightness(1.25);transform:translateY(-1px)}
 
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media (max-width:420px){
-  .card{padding:32px 22px 26px;border-radius:18px}
+  .card{padding:30px 20px 24px;border-radius:18px}
   .status-badge span{display:none}
   .status-badge{padding:9px}
 }
@@ -194,8 +194,8 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
 </div>
 <div class="status-badge"><span class="status-dot"></span><span class="mono">HS PANEL ONLINE</span></div>
 
-<div class="wrap" id="wrap">
-  <div class="card" id="card">
+<div class="wrap">
+  <div class="card">
     <div class="brand">
       <div class="brand-img">
         <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -211,56 +211,64 @@ input[type=text]#code:focus{border-color:var(--hs-success);box-shadow:0 0 0 4px 
       </div>
       <div><div class="brand-name">HS Panel</div><div class="brand-sub">Proxy Manager <span class="mono">· v1.0</span></div></div>
     </div>
-    <h1>ورود به پنل</h1>
-    <p class="sub" id="sub-title">ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود</p>
+
+    <h1 id="title">ورود به پنل</h1>
+    <p class="sub" id="sub-title">با نام کاربری و رمز عبور خود وارد شوید — پنل هر کاربر از بقیه جداست.</p>
+
+    <div class="tabs" id="tabs" style="display:none">
+      <button class="tab active" type="button" id="tab-login" onclick="setMode('login')"><i class="ti ti-login-2"></i> ورود</button>
+      <button class="tab" type="button" id="tab-register" onclick="setMode('register')"><i class="ti ti-user-plus"></i> ساخت اکانت</button>
+    </div>
 
     <div class="err" id="err" role="alert"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
-    <div class="success" id="success" role="status" style="display:none"><i class="ti ti-circle-check-filled"></i><span id="success-text"></span></div>
+    <div class="success" id="success" role="status"><i class="ti ti-circle-check-filled"></i><span id="success-text"></span></div>
 
-    <!-- مرحله ۱: ایمیل -->
-    <form id="form-email" novalidate>
+    <form id="form-auth" novalidate>
       <div class="field">
-        <label for="email">ایمیل</label>
+        <label for="username">نام کاربری</label>
         <div class="inp-wrap">
-          <input type="email" id="email" placeholder="example@domain.com" autofocus required autocomplete="email">
-          <i class="ti ti-mail ic-lock"></i>
+          <input type="text" id="username" name="username" class="lg mono-input" placeholder="مثلاً hossein"
+                 autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                 maxlength="32" pattern="[a-zA-Z0-9_.]{3,32}" required autofocus>
+          <i class="ti ti-user ic-lock"></i>
         </div>
       </div>
-      <button class="btn" type="submit" id="btn-email"><i class="ti ti-send"></i> ارسال کد تأیید</button>
-    </form>
-
-    <!-- مرحله ۲: کد تأیید -->
-    <form id="form-code" novalidate style="display:none">
       <div class="field">
-        <label for="code">کد تأیید</label>
+        <label for="password">رمز عبور</label>
         <div class="inp-wrap">
-          <input type="text" id="code" placeholder="کد ۶ رقمی" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" style="font-size:22px;letter-spacing:8px;text-align:center">
+          <input type="password" id="password" name="password" class="lg" placeholder="رمز عبور"
+                 autocomplete="current-password" minlength="6" required>
+          <i class="ti ti-lock ic-lock"></i>
+          <button class="ic-eye" type="button" id="toggle-pw" onclick="togglePw()" title="نمایش رمز" aria-label="نمایش رمز">
+            <i class="ti ti-eye" id="pw-icon"></i>
+          </button>
         </div>
       </div>
-      <button class="btn" type="submit" id="btn-code"><i class="ti ti-login-2"></i> ورود</button>
-      <button class="btn btn-ghost btn-sm" type="button" id="btn-back-email" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> تغییر ایمیل</button>
-    </form>
-
-    <!-- مرحله ۳: تنظیم رمز (فقط ثبت‌نام) -->
-    <form id="form-password" novalidate style="display:none">
-      <p class="sub" style="margin-bottom:16px">رمز عبور جدید برای حساب خود تعیین کنید</p>
-      <div class="field">
-        <label for="pw1">رمز عبور</label>
+      <div class="field" id="confirm-field" style="display:none">
+        <label for="password2">تکرار رمز عبور</label>
         <div class="inp-wrap">
-          <input type="password" id="pw1" placeholder="حداقل ۶ کاراکتر" minlength="6" required>
+          <input type="password" id="password2" name="password2" class="lg" placeholder="رمز را دوباره وارد کنید"
+                 autocomplete="new-password" minlength="6">
           <i class="ti ti-lock ic-lock"></i>
         </div>
       </div>
-      <div class="field" style="margin-top:12px">
-        <label for="pw2">تکرار رمز عبور</label>
+      <div class="field" id="note-field" style="display:none">
+        <label for="note">توضیح (اختیاری)</label>
         <div class="inp-wrap">
-          <input type="password" id="pw2" placeholder="رمز را مجدداً وارد کنید" minlength="6" required>
-          <i class="ti ti-lock ic-lock"></i>
+          <input type="text" id="note" class="lg" placeholder="مثلاً: اشتراک ماهانه" maxlength="60">
+          <i class="ti ti-notes ic-lock"></i>
         </div>
       </div>
-      <button class="btn" type="submit" id="btn-set-pw"><i class="ti ti-check"></i> تکمیل ثبت‌نام</button>
-      <button class="btn btn-ghost btn-sm" type="button" onclick="showEmailStep()" style="width:100%;margin-top:8px"><i class="ti ti-arrow-right"></i> انصراف</button>
+
+      <label class="remember" id="remember-row">
+        <input type="checkbox" id="remember" checked>
+        <span>نام کاربری را در این مرورگر به خاطر بسپار</span>
+      </label>
+
+      <button class="btn" type="submit" id="btn-submit"><i class="ti ti-login-2"></i> <span id="btn-text">ورود به پنل</span></button>
     </form>
+
+    <div class="tips" id="tips"></div>
 
     <div class="footer"><a href="https://t.me/" target="_blank" rel="noopener"><i class="ti ti-brand-telegram"></i> پشتیبانی</a></div>
   </div>
@@ -286,116 +294,113 @@ const errEl = document.getElementById('err');
 const errText = document.getElementById('err-text');
 const successEl = document.getElementById('success');
 const successText = document.getElementById('success-text');
+const pwInput = document.getElementById('password');
+const pw2Input = document.getElementById('password2');
+const userInput = document.getElementById('username');
+let mode = 'login';
+let signupAllowed = true;
+let minPw = 6;
 
-let currentEmail = '';
-let pendingToken = '';
-let devCode = '';
-
-function showErr(msg){ errText.textContent = msg; errEl.style.display = 'flex'; errEl.classList.add('show'); }
-function hideErr(){ errEl.style.display = 'none'; errEl.classList.remove('show'); }
-function showSuccess(msg){ successText.textContent = msg; successEl.style.display = 'flex'; }
-function hideSuccess(){ successEl.style.display = 'none'; }
-
-function showStep(step){
-  document.getElementById('form-email').style.display = 'none';
-  document.getElementById('form-code').style.display = 'none';
-  document.getElementById('form-password').style.display = 'none';
-  if(step === 'email'){ document.getElementById('form-email').style.display = 'block'; document.getElementById('sub-title').textContent = 'ایمیل خود را وارد کنید تا کد تأیید برای شما ارسال شود'; }
-  else if(step === 'code'){ document.getElementById('form-code').style.display = 'block'; document.getElementById('sub-title').textContent = 'کد ارسال‌شده به «' + currentEmail + '» را وارد کنید'; document.getElementById('code').focus(); }
-  else if(step === 'password'){ document.getElementById('form-password').style.display = 'block'; document.getElementById('sub-title').textContent = 'ثبت‌نام موفق! رمز عبور خود را تعیین کنید'; document.getElementById('pw1').focus(); }
+function showErr(msg){ errText.textContent = msg; errEl.classList.add('show'); }
+function hideErr(){ errEl.classList.remove('show'); }
+function showSuccess(msg){ successText.textContent = msg; successEl.classList.add('show'); }
+function hideSuccess(){ successEl.classList.remove('show'); }
+function togglePw(){
+  const show = pwInput.type === 'password';
+  pwInput.type = show ? 'text' : 'password';
+  document.getElementById('pw-icon').className = 'ti ' + (show ? 'ti-eye-off' : 'ti-eye');
 }
-function showEmailStep(){ hideErr(); hideSuccess(); showStep('email'); }
 
-// ── مرحله ۱: ارسال کد ──
-document.getElementById('form-email').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const emailInput = document.getElementById('email');
-  const email = emailInput.value.trim().toLowerCase();
-  const btn = document.getElementById('btn-email');
-  if(!email || !email.includes('@')){ showErr('ایمیل معتبر وارد کنید'); return; }
+function setMode(m){
+  mode = m;
+  const reg = (m === 'register');
+  document.getElementById('tab-login').classList.toggle('active', !reg);
+  document.getElementById('tab-register').classList.toggle('active', reg);
+  document.getElementById('title').textContent = reg ? 'ساخت اکانت جدید' : 'ورود به پنل';
+  document.getElementById('sub-title').textContent = reg
+    ? 'یک نام کاربری و رمز عبور انتخاب کنید؛ پنل شما از بقیه کاملاً جدا می‌ماند.'
+    : 'با نام کاربری و رمز عبور خود وارد شوید — پنل هر کاربر از بقیه جداست.';
+  document.getElementById('btn-text').textContent = reg ? 'ثبت‌نام و ورود' : 'ورود به پنل';
+  document.querySelector('#btn-submit i').className = 'ti ' + (reg ? 'ti-user-plus' : 'ti-login-2');
+  document.getElementById('confirm-field').style.display = reg ? 'block' : 'none';
+  document.getElementById('note-field').style.display = reg ? 'block' : 'none';
+  document.getElementById('remember-row').style.display = reg ? 'none' : 'flex';
+  pwInput.setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
   hideErr(); hideSuccess();
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ارسال...';
-  try {
-    const r = await fetch('/api/auth/request-code', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در ارسال کد');
-    currentEmail = email;
-    devCode = d.dev_code || '';
-    if(d.dev_mode || d.dev_code){
-      showSuccess('کد تأیید: ' + (d.dev_code || devCode) + ' (حالت توسعه)');
-    } else {
-      showSuccess('کد تأیید به ایمیل شما ارسال شد ✓');
-    }
-    showStep('code');
-  } catch(err){
-    showErr(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-send"></i> ارسال کد تأیید';
+  if(reg) renderTips(true); else renderTips(false);
+}
+
+function renderTips(reg){
+  const tips = document.getElementById('tips');
+  tips.innerHTML = reg
+    ? '<div class="tip"><i class="ti ti-user"></i><div>نام کاربری: <b>حروف انگلیسی کوچک، رقم، نقطه یا زیرخط</b> — ۳ تا ۳۲ کاراکتر.</div></div>' +
+      '<div class="tip"><i class="ti ti-shield-lock"></i><div>رمز عبور حداقل <b class="mono">' + minPw + '</b> کاراکتر. رمز به‌صورت هش‌شده ذخیره می‌شود و هیچ‌جا ارسال نمی‌گردد.</div></div>' +
+      '<div class="tip"><i class="ti ti-folder-lock"></i><div>هر اکانت کانفیگ‌ها، گروه‌ها و ترافیک <b>مستقل</b> دارد.</div></div>'
+    : '<div class="tip"><i class="ti ti-info-circle"></i><div>اکانت‌ها در همین سیستم ذخیره شده‌اند؛ اگر رمز را فراموش کردید با ادمین پنل تماس بگیرید.</div></div>';
+}
+renderTips(false);
+
+// نام کاربری آخرین ورود را پیش‌فرض پر کن
+const lastUser = localStorage.getItem('hs-last-username');
+if(lastUser){ userInput.value = lastUser; pwInput.focus(); }
+
+fetch('/api/auth/config').then(r => r.ok ? r.json() : null).then(cfg => {
+  if(!cfg) return;
+  signupAllowed = cfg.signup_allowed !== false;
+  minPw = cfg.min_password_len || 6;
+  document.getElementById('tabs').style.display = signupAllowed ? 'flex' : 'none';
+}).catch(()=>{});
+
+document.getElementById('form-auth').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-submit');
+  const username = (userInput.value || '').trim().toLowerCase();
+  const password = pwInput.value || '';
+  hideErr(); hideSuccess();
+
+  if(!username){ showErr('نام کاربری را وارد کنید'); userInput.focus(); return; }
+  if(!/^[a-z0-9_.]{3,32}$/.test(username)){ showErr('نام کاربری فقط حروف انگلیسی کوچک، رقم، نقطه و زیرخط (۳ تا ۳۲)'); return; }
+  if(!password){ showErr('رمز عبور را وارد کنید'); pwInput.focus(); return; }
+
+  let url = '/api/auth/login';
+  const payload = { username, password };
+  if(mode === 'register'){
+    if(password.length < minPw){ showErr('رمز عبور باید حداقل ' + minPw + ' کاراکتر باشد'); return; }
+    if(pw2Input.value !== password){ showErr('رمزها یکسان نیستند'); return; }
+    url = '/api/auth/register';
+    payload.password_confirm = pw2Input.value;
+    const note = document.getElementById('note');
+    if(note && note.value.trim()) payload.note = note.value.trim();
   }
-});
 
-// ── مرحله ۲: تأیید کد ──
-document.getElementById('form-code').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const code = document.getElementById('code').value.trim();
-  const btn = document.getElementById('btn-code');
-  if(!code || code.length !== 6 || !/^\d+$/.test(code)){ showErr('کد باید ۶ رقم باشد'); return; }
-  hideErr(); hideSuccess();
   btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال تأیید...';
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> <span>در حال بررسی...</span>';
   try {
-    const r = await fetch('/api/auth/verify-code', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email: currentEmail, code})
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در تأیید کد');
-    if(d.stage === 'set_password'){
-      pendingToken = d.pending_token;
-      showStep('password');
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا در ارتباط با سرور');
+    if(mode === 'login'){
+      if(document.getElementById('remember').checked) localStorage.setItem('hs-last-username', username);
+      else localStorage.removeItem('hs-last-username');
     } else {
-      // ورود موفق
-      window.location.href = '/dashboard';
+      localStorage.setItem('hs-last-username', username);
     }
-  } catch(err){
-    showErr(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-login-2"></i> ورود';
-  }
-});
-
-// ── مرحله ۳: تنظیم رمز (ثبت‌نام) ──
-document.getElementById('form-password').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const pw1 = document.getElementById('pw1').value;
-  const pw2 = document.getElementById('pw2').value;
-  const btn = document.getElementById('btn-set-pw');
-  if(pw1.length < 6){ showErr('رمز عبور باید حداقل ۶ کاراکتر باشد'); return; }
-  if(pw1 !== pw2){ showErr('رمزهای واردشده یکسان نیستند'); return; }
-  hideErr(); hideSuccess();
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال ثبت‌نام...';
-  try {
-    const r = await fetch('/api/auth/set-password', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({pending_token: pendingToken, password: pw1})
-    });
-    const d = await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(d.detail || 'خطا در ثبت‌نام');
     window.location.href = '/dashboard';
   } catch(err){
-    showErr(err.message);
+    showErr(err.message || 'خطا');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-check"></i> تکمیل ثبت‌نام';
+    btn.innerHTML = '<i class="ti ' + (mode === 'register' ? 'ti-user-plus' : 'ti-login-2') + '"></i> <span id="btn-text">' + (mode === 'register' ? 'ثبت‌نام و ورود' : 'ورود به پنل') + '</span>';
   }
 });
+
+// Enter در فیلد رمز → ثبت فرم
+pwInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('form-auth').requestSubmit(); } });
+pw2Input.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('form-auth').requestSubmit(); } });
 </script>
 </body>
 </html>
@@ -748,13 +753,14 @@ tbody tr:hover{background:var(--hs-purple-d)}
 
       <div class="sb-section-label">ابزارها</div>
       <a class="sb-nav-item" data-page="gaming" onclick="nav('gaming')"><i class="ti ti-device-gamepad-2"></i><span class="sb-text">کانفیگ گیمینگ</span><span class="sb-badge" style="background:var(--hs-violet-d);color:var(--hs-purple2)">جدید</span></a>
-      <a class="sb-nav-item" data-page="nodes" onclick="nav('nodes')"><i class="ti ti-server-2"></i><span class="sb-text">نودها</span></a>
-      <a class="sb-nav-item" data-page="telegram" onclick="nav('telegram')"><i class="ti ti-brand-telegram"></i><span class="sb-text">ربات تلگرام</span></a>
-      <a class="sb-nav-item" data-page="backups" onclick="nav('backups')"><i class="ti ti-database"></i><span class="sb-text">بکاپ / ریستور</span></a>
+      <a class="sb-nav-item" data-page="nodes" data-admin="1" onclick="nav('nodes')"><i class="ti ti-server-2"></i><span class="sb-text">نودها</span></a>
+      <a class="sb-nav-item" data-page="telegram" data-admin="1" onclick="nav('telegram')"><i class="ti ti-brand-telegram"></i><span class="sb-text">ربات تلگرام</span></a>
+      <a class="sb-nav-item" data-page="backups" data-admin="1" onclick="nav('backups')"><i class="ti ti-database"></i><span class="sb-text">بکاپ / ریستور</span></a>
 
       <div class="sb-section-label">سیستم</div>
       <a class="sb-nav-item" data-page="settings" onclick="nav('settings')"><i class="ti ti-settings"></i><span class="sb-text">تنظیمات</span></a>
-      <a class="sb-nav-item" data-page="update" onclick="nav('update')"><i class="ti ti-cloud-download"></i><span class="sb-text">بروزرسانی</span></a>
+      <a class="sb-nav-item" data-page="users" data-admin="1" onclick="nav('users')"><i class="ti ti-users-group"></i><span class="sb-text">کاربران</span><span class="sb-badge" id="bdg-users">0</span></a>
+      <a class="sb-nav-item" data-page="update" data-admin="1" onclick="nav('update')"><i class="ti ti-cloud-download"></i><span class="sb-text">بروزرسانی</span></a>
     </nav>
 
     <div class="sb-foot">
@@ -773,10 +779,12 @@ tbody tr:hover{background:var(--hs-purple-d)}
       <div class="tb-actions">
         <button class="tb-btn" onclick="toggleTheme()" title="تغییر تم"><i class="ti" id="top-theme-ic"></i></button>
         <button class="tb-btn" title="اعلان‌ها" onclick="showToast('اعلان جدیدی نیست','info')"><i class="ti ti-bell"></i><span class="dot-ind"></span></button>
-        <div class="tb-user" onclick="logout()" title="خروج">
-          <div class="tb-avatar">A</div>
-          <span class="tb-user-name">مدیر</span>
+        <div class="tb-user" onclick="openModal('modal-account')" title="حساب کاربری" style="cursor:pointer">
+          <div class="tb-avatar" id="tb-avatar">?</div>
+          <span class="tb-user-name" id="tb-user-name">…</span>
+          <span class="badge badge-purple" id="tb-role" style="display:none">ادمین</span>
         </div>
+        <button class="tb-btn" onclick="logout()" title="خروج از حساب"><i class="ti ti-logout"></i></button>
       </div>
     </header>
 
@@ -901,15 +909,64 @@ tbody tr:hover{background:var(--hs-purple-d)}
         <div class="card"><div class="empty"><i class="ti ti-database"></i><div class="empty-title">بکاپ</div><div class="empty-sub">این بخش در حال توسعه است</div></div></div>
       </div>
 
+      <!-- USERS PAGE (admin only) -->
+      <div class="page" id="page-users" data-admin="1">
+        <div class="page-head">
+          <div><h1 class="page-title"><i class="ti ti-users-group"></i> کاربران پنل</h1><div class="page-sub">هر اکانت فقط پنل و کانفیگ‌های خودش را می‌بیند</div></div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" onclick="loadUsers()"><i class="ti ti-refresh"></i> بروزرسانی</button>
+            <button class="btn btn-primary btn-sm" onclick="openUserModal()"><i class="ti ti-user-plus"></i> کاربر جدید</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-head">
+            <div class="tbl-title"><i class="ti ti-list"></i> لیست اکانت‌ها</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge badge-blue" id="users-signup-state">—</span>
+              <input type="text" placeholder="جستجوی نام کاربری..." style="padding:7px 12px;border-radius:8px;border:1px solid var(--hs-border2);background:rgba(0,0,0,.18);color:var(--hs-text);font-family:inherit;font-size:12px;outline:none" oninput="filterUsers(this.value)">
+            </div>
+          </div>
+          <div class="tbl-scroll">
+            <table id="users-tbl">
+              <thead><tr><th>نام کاربری</th><th>نقش</th><th>کانفیگ‌ها</th><th>گروه‌ها</th><th>ترافیک</th><th>آخرین ورود</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+              <tbody><tr><td colspan="8" class="empty">در حال بارگذاری...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-title"><i class="ti ti-info-circle"></i> ثبت‌نام خودکار کاربران</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="font-size:12px;color:var(--hs-dim);line-height:1.8">اگر روشن باشد، هر کسی می‌تواند از صفحه‌ی ورود برای خودش اکانت بسازد. با خاموش‌کردنش فقط شما می‌توانید کاربر جدید بسازید.</div>
+            <button class="btn btn-outline btn-sm" id="btn-toggle-signup" onclick="toggleSignup()"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال خواندن...</button>
+          </div>
+          <div style="font-size:11px;color:var(--hs-dim);margin-top:10px"><i class="ti ti-lock" style="vertical-align:-2px"></i> وضعیت این کلید با متغیر محیطی <span class="mono" style="color:var(--hs-purple2)">ALLOW_SIGNUP</span> در سرور تنظیم می‌شود.</div>
+        </div>
+      </div>
+
       <!-- SETTINGS PAGE -->
       <div class="page" id="page-settings">
         <div class="page-head">
           <div><h1 class="page-title"><i class="ti ti-settings"></i> تنظیمات</h1><div class="page-sub">تنظیمات کلی سیستم</div></div>
         </div>
         <div class="card" style="max-width:520px">
+          <div class="card-title"><i class="ti ti-user-circle"></i> حساب کاربری</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:4px 0 14px">
+            <div class="tb-avatar" id="acc-avatar" style="width:42px;height:42px;font-size:16px">?</div>
+            <div style="min-width:0">
+              <div style="font-size:15px;font-weight:800" class="mono" id="acc-username">—</div>
+              <div style="font-size:11.5px;color:var(--hs-dim);margin-top:3px" id="acc-meta">در حال بارگذاری...</div>
+            </div>
+            <span class="badge badge-purple" id="acc-role" style="margin-right:auto">—</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--hs-dim);line-height:1.8;border-top:1px solid var(--hs-border2);padding-top:12px">
+            <i class="ti ti-folder-lock" style="color:var(--hs-purple)"></i>
+            پنل این اکانت از سایر کاربران جداست؛ کانفیگ‌ها و گروه‌ها فقط برای همین نام کاربری نمایش داده می‌شوند.
+          </div>
+        </div>
+        <div class="card" style="max-width:520px;margin-top:14px">
           <div class="card-title"><i class="ti ti-key"></i> تغییر رمز عبور</div>
-          <div class="field"><label>رمز فعلی</label><input type="password" id="set-cur-pw"></div>
-          <div class="field"><label>رمز جدید</label><input type="password" id="set-new-pw"></div>
+          <div class="field"><label>رمز فعلی</label><input type="password" id="set-cur-pw" autocomplete="current-password"></div>
+          <div class="field"><label>رمز جدید</label><input type="password" id="set-new-pw" autocomplete="new-password" placeholder="حداقل ۶ کاراکتر"></div>
           <button class="btn btn-primary" onclick="changePw()"><i class="ti ti-check"></i> ذخیره رمز جدید</button>
         </div>
       </div>
@@ -925,6 +982,53 @@ tbody tr:hover{background:var(--hs-purple-d)}
       </div>
     </div>
   </main>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div class="modal-bg" id="modal-account">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <div class="modal-icon"><i class="ti ti-user-circle"></i></div>
+      <div><div class="modal-title">حساب کاربری</div><div class="modal-sub mono" id="acc-modal-name">—</div></div>
+      <button class="modal-close" onclick="closeModal('modal-account')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--hs-dim);line-height:1.9">
+        برای تغییر رمز به <b style="color:var(--hs-text)">تنظیمات</b> بروید. برای بیرون آمدن از پنل دکمه‌ی خروج را بزنید.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-account')">بستن</button>
+      <button class="btn btn-danger" onclick="logout()"><i class="ti ti-logout"></i> خروج</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE / EDIT USER MODAL (admin) -->
+<div class="modal-bg" id="modal-user">
+  <div class="modal" style="max-width:430px">
+    <div class="modal-head">
+      <div class="modal-icon"><i class="ti ti-user-plus"></i></div>
+      <div><div class="modal-title" id="user-modal-title">ساخت کاربر جدید</div><div class="modal-sub" id="user-modal-sub">یک اکانت مستقل برای این کاربر ساخته می‌شود</div></div>
+      <button class="modal-close" onclick="closeModal('modal-user')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>نام کاربری</label><input type="text" id="us-username" placeholder="مثلاً ali_2024" maxlength="32" style="font-family:'JetBrains Mono',monospace"></div>
+      <div class="field"><label>رمز عبور</label><input type="password" id="us-password" placeholder="حداقل ۶ کاراکتر" autocomplete="new-password"></div>
+      <div class="field"><label>توضیح (اختیاری)</label><input type="text" id="us-note" placeholder="مثلاً: اشتراک تا ۱۴۰۴/۱۲/۳۰"></div>
+      <div class="field" id="us-status-field" style="display:none"><label>وضعیت</label>
+        <select id="us-status"><option value="active">فعال</option><option value="blocked">مسدود</option></select>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--hs-mid);cursor:pointer">
+        <input type="checkbox" id="us-admin" style="accent-color:var(--hs-purple);width:15px;height:15px">
+        دسترسی ادمین (دیدن همه‌ی پنل‌ها + تنظیمات ورکر)
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-user')">انصراف</button>
+      <button class="btn btn-primary" id="us-save" onclick="saveUser()"><i class="ti ti-check"></i> ذخیره</button>
+    </div>
+  </div>
 </div>
 
 <!-- CREATE LINK MODAL -->
@@ -1135,12 +1239,213 @@ function toggleTheme(){
 }
 applyTheme(isDark);
 
+/* ════ IDENTITY / ROLE ════ */
+let ME = { username: '', is_admin: false, authenticated: false };
+
+function applyRole(){
+  const admin = !!ME.is_admin;
+  // آیتم‌ها و صفحه‌های مخصوص ادمین
+  document.querySelectorAll('[data-admin="1"]').forEach(el => { el.style.display = admin ? '' : 'none'; });
+  // MTProto فقط در پنل ادمین (توکن Railway و TCP Proxy پیش ادمین است)
+  const protoSel = document.getElementById('cl-proto');
+  if(protoSel){
+    [...protoSel.options].forEach(o => {
+      if(o.value !== 'mtproto') return;
+      o.disabled = !admin;
+      o.text = admin ? o.text.replace(/\s*· فقط ادمین$/,'') : o.text.replace(/\s*· فقط ادمین$/,'') + ' · فقط ادمین';
+    });
+    if(!admin && protoSel.value === 'mtproto') protoSel.value = 'vless-ws';
+  }
+  // نام و نقش در توپ‌بار
+  const uname = ME.username || '—';
+  const nameEl = document.getElementById('tb-user-name'); if(nameEl) nameEl.textContent = uname;
+  const av = document.getElementById('tb-avatar'); if(av) av.textContent = (uname[0] || '?').toUpperCase();
+  const role = document.getElementById('tb-role');
+  if(role){ role.style.display = admin ? '' : 'none'; role.textContent = admin ? 'ادمین' : 'کاربر'; }
+  const modalName = document.getElementById('acc-modal-name'); if(modalName) modalName.textContent = '@' + uname;
+  const accAv = document.getElementById('acc-avatar'); if(accAv) accAv.textContent = (uname[0] || '?').toUpperCase();
+  const accU = document.getElementById('acc-username'); if(accU) accU.textContent = '@' + uname;
+  const accRole = document.getElementById('acc-role'); if(accRole) accRole.textContent = admin ? 'ادمین پنل' : 'کاربر پنل';
+}
+
+async function loadIdentity(){
+  try {
+    const r = await fetch('/api/me');
+    const d = await r.json().catch(() => ({}));
+    ME = { username: d.username || '', is_admin: !!d.is_admin, authenticated: !!d.authenticated, created_at: d.created_at || null };
+    if(!d.authenticated){ window.location.href = '/login'; return; }
+  } catch(e){ /* شبکه‌ای؛ رول روی حالت کاربر می‌ماند */ }
+  applyRole();
+  if(ME.is_admin) loadUsers();
+}
+
 /* ════ NAVIGATION ════ */
 function nav(page){
+  const item = document.querySelector('.sb-nav-item[data-page="' + page + '"]');
+  if(item && item.dataset.admin === '1' && !ME.is_admin){
+    showToast('این بخش فقط در پنل ادمین است', 'warn');
+    return;
+  }
   document.querySelectorAll('.sb-nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  if(page === 'settings') renderAccountMeta();
+  if(page === 'users' && ME.is_admin) loadUsers();
   closeSidebar();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderAccountMeta(){
+  const meta = document.getElementById('acc-meta');
+  if(!meta) return;
+  const created = ME.created_at ? ME.created_at.slice(0,10) : null;
+  meta.innerHTML = 'نام کاربری: <b class="mono" style="color:var(--hs-text)">' + esc(ME.username || '—') + '</b>' +
+    (created ? ' · عضو از ' + created : '') + (ME.is_admin ? ' · دسترسی کامل به سیستم و ورکر' : ' · فقط پنل خودش');
+}
+
+/* ════ USERS (admin) ════ */
+let usersList = [];
+let signupAllowed = true;
+let editingUser = null;
+
+async function loadUsers(){
+  const rows = document.querySelector('#users-tbl tbody');
+  if(!rows) return;
+  try {
+    const r = await authFetch('/api/users');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    usersList = d.users || [];
+    signupAllowed = !!d.signup_allowed;
+    const bdg = document.getElementById('bdg-users'); if(bdg) bdg.textContent = usersList.length;
+    const su = document.getElementById('users-signup-state');
+    if(su){
+      su.textContent = d.signup_allowed ? 'ثبت‌نام عمومی روشن' : 'ثبت‌نام عمومی خاموش';
+      su.className = 'badge ' + (d.signup_allowed ? 'badge-amber' : 'badge-green');
+    }
+    const btn = document.getElementById('btn-toggle-signup');
+    if(btn) btn.innerHTML = '<i class="ti ti-toggle-' + (d.signup_allowed ? 'left' : 'right') + '"></i> ' + (d.signup_allowed ? 'خاموش کردن ثبت‌نام' : 'روشن کردن ثبت‌نام');
+    if(!usersList.length){ rows.innerHTML = '<tr><td colspan="8"><div class="empty"><i class="ti ti-users"></i><div class="empty-title">کاربری نیست</div><div class="empty-sub">اولین کاربر را بسازید</div></div></td></tr>'; return; }
+    rows.innerHTML = usersList.map(u => {
+      const last = u.last_login ? u.last_login.slice(0,16).replace('T',' ') : 'هرگز';
+      return '<tr data-user="' + esc(u.username) + '">' +
+        '<td><div style="font-size:13px;font-weight:700;font-family:monospace">@' + esc(u.username) + '</div>' + (u.note ? '<div class="cell-mono" style="font-size:10.5px">' + esc(u.note) + '</div>' : '') + '</td>' +
+        '<td>' + (u.is_admin ? '<span class="badge badge-purple">ادمین</span>' : '<span class="badge badge-blue">کاربر</span>') + '</td>' +
+        '<td><span class="cell-mono">' + (u.links_count||0) + '</span>' + (u.active_links ? ' <span style="font-size:10.5px;color:var(--hs-success)">' + u.active_links + ' فعال</span>' : '') + '</td>' +
+        '<td><span class="cell-mono">' + (u.subs_count||0) + '</span></td>' +
+        '<td><span class="cell-mono">' + fmtBytes(u.used_bytes||0) + '</span></td>' +
+        '<td><span class="cell-mono" style="font-size:11px">' + last + '</span></td>' +
+        '<td>' + (u.status === 'blocked' ? '<span class="badge badge-red badge-dot">مسدود</span>' : '<span class="badge badge-green badge-dot">فعال</span>') + '</td>' +
+        '<td><div style="display:flex;gap:4px">' +
+          '<button class="btn btn-ghost btn-sm" onclick="openEditUser(\'' + esc(u.username) + '\')" title="ویرایش / رمز جدید"><i class="ti ti-edit"></i></button>' +
+          (u.is_admin ? '' : '<button class="btn btn-ghost btn-sm" onclick="toggleBlockUser(\'' + esc(u.username) + '\',' + (u.status === 'blocked') + ')" title="' + (u.status === 'blocked' ? 'رفع مسدودی' : 'مسدود کردن') + '"><i class="ti ti-power"></i></button>') +
+          (u.is_admin ? '' : '<button class="btn btn-danger btn-sm" onclick="deleteUser(\'' + esc(u.username) + '\')" title="حذف اکانت"><i class="ti ti-trash"></i></button>') +
+        '</div></td></tr>';
+    }).join('');
+  } catch(e){ if(rows) rows.innerHTML = '<tr><td colspan="8" class="empty">خطا در بارگذاری کاربران</td></tr>'; }
+}
+
+function filterUsers(q){
+  q = (q||'').toLowerCase();
+  document.querySelectorAll('#users-tbl tbody tr').forEach(r => {
+    r.style.display = (r.dataset.user || '').includes(q) ? '' : 'none';
+  });
+}
+
+function openUserModal(){
+  editingUser = null;
+  document.getElementById('user-modal-title').textContent = 'ساخت کاربر جدید';
+  document.getElementById('user-modal-sub').textContent = 'یک اکانت مستقل برای این کاربر ساخته می‌شود';
+  document.getElementById('us-username').value = '';
+  document.getElementById('us-username').disabled = false;
+  document.getElementById('us-password').value = '';
+  document.getElementById('us-password').placeholder = 'حداقل ۶ کاراکتر';
+  document.getElementById('us-note').value = '';
+  document.getElementById('us-admin').checked = false;
+  document.getElementById('us-status-field').style.display = 'none';
+  openModal('modal-user');
+}
+
+function openEditUser(username){
+  const u = usersList.find(x => x.username === username);
+  if(!u) return;
+  editingUser = username;
+  document.getElementById('user-modal-title').textContent = 'ویرایش @' + username;
+  document.getElementById('user-modal-sub').textContent = 'رمز خالی بماند اگر نمی‌خواهید عوض شود';
+  document.getElementById('us-username').value = username;
+  document.getElementById('us-username').disabled = true;
+  document.getElementById('us-password').value = '';
+  document.getElementById('us-note').value = u.note || '';
+  document.getElementById('us-admin').checked = !!u.is_admin;
+  document.getElementById('us-status').value = u.status === 'blocked' ? 'blocked' : 'active';
+  document.getElementById('us-status-field').style.display = 'block';
+  openModal('modal-user');
+}
+
+async function saveUser(){
+  const username = (document.getElementById('us-username').value || '').trim().toLowerCase();
+  const password = document.getElementById('us-password').value || '';
+  const note = (document.getElementById('us-note').value || '').trim();
+  const is_admin = document.getElementById('us-admin').checked;
+  const btn = document.getElementById('us-save');
+  if(!/^[a-z0-9_.]{3,32}$/.test(username)){ showToast('نام کاربری نامعتبر است (حروف کوچک انگلیسی، رقم، نقطه، زیرخط)', 'warn'); return; }
+  const payload = { username, note, is_admin };
+  if(password){
+    if(password.length < 6){ showToast('رمز باید حداقل ۶ کاراکتر باشد', 'warn'); return; }
+    payload.password = password;
+  }
+  if(!editingUser && !password){ showToast('برای ساخت کاربر، رمز عبور لازم است', 'warn'); return; }
+  if(editingUser && document.getElementById('us-status-field').style.display !== 'none'){
+    payload.status = document.getElementById('us-status').value;
+  }
+  btn.disabled = true;
+  try {
+    const r = editingUser
+      ? await fetch('/api/users/' + encodeURIComponent(editingUser), {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
+      : await fetch('/api/users', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast(editingUser ? 'کاربر به‌روزرسانی شد' : 'کاربر ساخته شد', 'success');
+    closeModal('modal-user');
+    loadUsers();
+  } catch(e){ showToast(e.message || 'خطا', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleBlockUser(username, isBlocked){
+  try {
+    const r = await fetch('/api/users/' + encodeURIComponent(username), {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ status: isBlocked ? 'active' : 'blocked' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast(isBlocked ? 'اکانت فعال شد' : 'اکانت مسدود شد', 'success');
+    loadUsers();
+  } catch(e){ showToast(e.message || 'خطا', 'error'); }
+}
+
+async function deleteUser(username){
+  const purge = confirm('حذف اکانت @' + username + '؟\n\n«OK» = کانفیگ‌ها و گروه‌های این کاربر هم حذف شود\n«Cancel» = فقط اکانت حذف شود و دیتا به پنل ادمین منتقل شود');
+  try {
+    const r = await fetch('/api/users/' + encodeURIComponent(username) + (purge ? '?purge=1' : ''), {method:'DELETE'});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast('اکانت حذف شد', 'success');
+    loadUsers(); loadLinks(); loadStats();
+  } catch(e){ showToast(e.message || 'خطا', 'error'); }
+}
+
+async function toggleSignup(){
+  const btn = document.getElementById('btn-toggle-signup');
+  try {
+    if(btn) btn.disabled = true;
+    const r = await fetch('/api/settings/signup', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enabled: !signupAllowed})});
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'خطا');
+    showToast(d.enabled ? 'ثبت‌نام عمومی روشن شد' : 'ثبت‌نام عمومی خاموش شد', 'success');
+    loadUsers();
+  } catch(e){ showToast(e.message || 'خطا در ذخیره (باید متغیر محیطی ALLOW_SIGNUP تغییر کند)', 'error'); }
+  finally { if(btn) btn.disabled = false; }
 }
 
 /* ════ SIDEBAR ════ */
@@ -1246,7 +1551,8 @@ async function loadActivity(){
     feed.innerHTML = logs.slice(-12).reverse().map(l => {
       const ic = l.level==='err' ? 'ti-alert-circle' : l.level==='warn' ? 'ti-alert-triangle' : l.level==='ok' ? 'ti-circle-check' : 'ti-info-circle';
       const cl = l.level==='err' ? 'red' : l.level==='warn' ? 'amber' : l.level==='ok' ? 'green' : 'blue';
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:rgba(0,0,0,.12)"><i class="ti ' + ic + '" style="color:var(--hs-' + (cl==='red'?'danger':cl==='amber'?'warn':cl==='green'?'success':'info') + ');font-size:15px;flex-shrink:0"></i><div style="flex:1;min-width:0;font-size:12px;color:var(--hs-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (l.message||'') + '</div><div style="font-size:10.5px;color:var(--hs-dim);white-space:nowrap">' + (l.time||'').substring(11,16) + '</div></div>';
+      const who = (ME.is_admin && l.owner) ? '<span class="badge badge-blue" style="font-size:9px;margin-left:6px">@' + esc(l.owner) + '</span>' : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:rgba(0,0,0,.12)"><i class="ti ' + ic + '" style="color:var(--hs-' + (cl==='red'?'danger':cl==='amber'?'warn':cl==='green'?'success':'info') + ');font-size:15px;flex-shrink:0"></i><div style="flex:1;min-width:0;font-size:12px;color:var(--hs-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (l.message||'') + who + '</div><div style="font-size:10.5px;color:var(--hs-dim);white-space:nowrap">' + (l.time||'').substring(11,16) + '</div></div>';
     }).join('');
   } catch(e){}
 }
@@ -1265,7 +1571,8 @@ async function loadLinks(){
       const pct = lim > 0 ? Math.min(100, (used/lim*100)) : 0;
       // زیر کانفیگ فقط IP یا UUID کوتاه نشون بده - نه ایمیل/فول اینفو
       const subLine = l.static_ip || (l.uuid ? l.uuid.substring(0,8) : '—');
-      return '<tr data-label="' + (l.label||'').toLowerCase() + '"><td><div class="cell-label">' + (l.label||'—') + '</div><div class="cell-mono">' + subLine + '</div></td>' +
+      const ownerTag = (ME.is_admin && l.owner) ? ' <span class="badge badge-blue" style="font-size:9px">@' + esc(l.owner) + '</span>' : '';
+      return '<tr data-label="' + (l.label||'').toLowerCase() + '"><td><div class="cell-label">' + (l.label||'—') + ownerTag + '</div><div class="cell-mono">' + subLine + '</div></td>' +
         '<td><span class="badge badge-purple">' + (l.protocol||'') + '</span></td>' +
         '<td><div class="cell-mono">' + fmtBytes(used) + '</div>' + (lim>0 ? '<div style="height:3px;background:var(--hs-border2);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--hs-purple),var(--hs-violet))"></div></div>' : '') + '</td>' +
         '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
@@ -1579,7 +1886,7 @@ async function changePw(){
   try {
     const r = await fetch('/api/change-password', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({current_password: cur, new_password: nw})});
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
-    showToast('رمز تغییر کرد','success');
+    showToast('رمز تغییر کرد — در دستگاه‌های دیگر باید دوباره وارد شوید','success');
     document.getElementById('set-cur-pw').value = '';
     document.getElementById('set-new-pw').value = '';
   } catch(e){ showToast(e.message,'error'); }
@@ -1740,6 +2047,7 @@ async function refreshAll(){
   await Promise.all([loadStats(), loadActivity(), loadLinks()]);
 }
 async function init(){
+  try { await loadIdentity(); } catch(e){ console.error('identity', e); }
   try { await refreshAll(); } catch(e){ console.error('refreshAll', e); }
   try { loadGamingProfiles(); } catch(e){ console.error('gaming', e); }
   // Get hourly data from stats

@@ -42,6 +42,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from urllib.parse import quote
 from collections import deque, defaultdict
+from contextvars import ContextVar
 from pathlib import Path
 import bottokentcpproxy
 from protocol.mtproto import mtproto_native as mtproto
@@ -62,6 +63,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("HS-Panel")
 
 IRAN_TZ = ZoneInfo("Asia/Tehran")
+
+# sentinel برای پارامتر اختیاری owner در log_activity
+_UNSET = object()
 
 app = FastAPI(title="HS Panel", docs_url=None, redoc_url=None)
 
@@ -264,6 +268,8 @@ async def load_state():
             if "password_hash" in data:
                 AUTH["password_hash"] = data["password_hash"]
             USERS.update(data.get("users", {}))
+            if data.get("allow_signup") is not None:
+                CONFIG["allow_signup"] = bool(data.get("allow_signup"))
             CONFIG["disable_logging"] = bool(data.get("disable_logging", False))
             apply_logging_state()
             logger.info(
@@ -289,6 +295,7 @@ async def save_state():
                 "users": dict(USERS),
                 "password_hash": AUTH["password_hash"],
                 "disable_logging": CONFIG.get("disable_logging", False),
+                "allow_signup": CONFIG.get("allow_signup"),
                 "saved_at": datetime.now().isoformat(),
             }
             tmp = DATA_FILE.with_suffix(".tmp")
@@ -380,161 +387,226 @@ PROTOCOLS = (
 )
 DEFAULT_PROTOCOL = "vless-ws"
 
-def log_activity(kind: str, message: str, level: str = "info"):
+def log_activity(kind: str, message: str, level: str = "info", owner=_UNSET):
+    """ثبت رویداد در لاگ فعالیت.
+
+    اگر `owner` داده نشود، از هویت درخواست جاری (contextvar) پر می‌شود. رویداد های
+    ادمین و سیستم owner ندارند و فقط ادمین آن‌ها را می‌بیند؛ رویداد های هر کاربر
+    عادی با نام کاربری خودش برچسب می‌خورد تا در پنل بقیه نمایش داده نشود.
+    """
+    if owner is _UNSET:
+        ident = CURRENT_USER.get()
+        owner = ident["username"] if (ident and not ident.get("is_admin")) else None
     activity_logs.append({
         "kind": kind,
         "level": level,
         "message": message,
+        "owner": owner,
         "time": datetime.now().isoformat(),
     })
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
+# ── Auth (نام کاربری + رمز عبور) ─────────────────────────────────────────────
 SESSION_COOKIE = "hs_session"
 SESSION_TTL = 60 * 60 * 24 * 7
 
-def hash_password(pw: str) -> str:
+# ادمین پنل: همان اکانت اصلی که به ورکر / ریل‌وی وصل است.
+# با env متغیرهای ADMIN_USERNAME و ADMIN_PASSWORD قابل تغییر است.
+ADMIN_USERNAME = (os.environ.get("ADMIN_USERNAME") or "hossein").strip().lower()
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or "hossein2022"
+
+# ثبت‌نام خودکار توسط خود کاربرها. با ALLOW_SIGNUP=0 فقط ادمین کاربر می‌سازد.
+# این مقدار فقط پیش‌فرض است؛ ادمین می‌تواند از پنل هم آن را عوض کند (در state ذخیره می‌شود).
+ALLOW_SIGNUP = (os.environ.get("ALLOW_SIGNUP", "1") or "1").strip().lower() not in ("0", "false", "no", "off")
+
+
+def signup_enabled() -> bool:
+    val = CONFIG.get("allow_signup")
+    return ALLOW_SIGNUP if val is None else bool(val)
+
+USERNAME_RE = re.compile(r"^[a-z0-9_.]{3,32}$")
+MIN_PASSWORD_LEN = 6
+_PW_ITERATIONS = 120_000
+
+
+def legacy_hash_password(pw: str) -> str:
+    """الگوریتم قدیمی (sha256 + secret) — فقط برای سازگاری با هش‌های ذخیره‌شده."""
     return hashlib.sha256(f"{pw}{CONFIG['secret']}".encode()).hexdigest()
 
-AUTH = {"password_hash": hash_password(os.environ.get("ADMIN_PASSWORD", "123456"))}
-SESSIONS: dict = {}          # token -> {"email": str, "is_admin": bool, "exp": float}
-SESSIONS_LOCK = asyncio.Lock()
 
-# ── Multi-user (email + verification code) ────────────────────────────────────
-# USERS: ایمیل -> {"password_hash": str, "is_admin": bool, "created_at": str, "email_verified": True}
-# VERIFICATION_CODES: email -> {"code": str, "expires_at": float, "purpose": "register"|"login"}
-# PASSWORD_RESET: email -> {"code": str, "expires_at": float}
+def hash_password(pw: str) -> str:
+    """هش جدید: PBKDF2-HMAC-SHA256 با salt اختصاصی هر کاربر."""
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, _PW_ITERATIONS)
+    return f"pbkdf2${_PW_ITERATIONS}${salt.hex()}${dk.hex()}"
+
+
+def hash_shared_password(pw: str) -> str:
+    """رمز گروه اشتراک / کلید نود — عمداً ارزان‌تر از رمز اکانت، چون این مسیر
+    توسط کلاینت‌ها و CDN ها زیاد تکرار می‌شود و نباید CPU سرور را قفل کند."""
+    salt = secrets.token_bytes(12)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, 20_000)
+    return f"pbkdf2$20000${salt.hex()}${dk.hex()}"
+
+
+def verify_password(pw: str, stored: str | None) -> bool:
+    if not stored or not pw:
+        return False
+    if stored.startswith("pbkdf2$"):
+        try:
+            _, iters, salt_hex, digest = stored.split("$")
+            dk = hashlib.pbkdf2_hmac(
+                "sha256", pw.encode("utf-8"), bytes.fromhex(salt_hex), int(iters)
+            )
+            return secrets.compare_digest(dk.hex(), digest)
+        except Exception:
+            return False
+    # هش قدیمی → ارتقا داده نمیشه مگه اینکه کاربر رمز رو عوض کنه
+    return secrets.compare_digest(legacy_hash_password(pw), stored)
+
+
+# AUTH فقط برای سازگاری نگه داشته شده (central.py آن را می‌خواند)؛
+# منبع واقعی احراز هویت، دیکشنری USERS است.
+AUTH = {"username": ADMIN_USERNAME, "password_hash": legacy_hash_password(ADMIN_PASSWORD)}
+
+# USERS: username -> {username, password_hash, is_admin, status, created_at, last_login}
 USERS: dict = {}
 USERS_LOCK = asyncio.Lock()
-VERIFICATION_CODES: dict = {}
-VERIFICATION_LOCK = asyncio.Lock()
-PASSWORD_RESET: dict = {}
-PASSWORD_RESET_LOCK = asyncio.Lock()
 
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "").strip().lower() or "admin@hspanel.local"
+# SESSIONS: token -> {"username", "is_admin", "exp"}
+SESSIONS: dict = {}
+SESSIONS_LOCK = asyncio.Lock()
 
-# کد تایید ۶ رقمی، ۱۰ دقیقه اعتبار
-VERIFICATION_TTL = 600
-VERIFICATION_CODE_LEN = 6
+# تلاش‌های ناموفق ورود (بلاک موقت پس از چند خطا — جایگزین rate-limit ایمیلی قدیم)
+LOGIN_FAILS: dict = {}
+LOGIN_FAILS_LOCK = asyncio.Lock()
+LOGIN_FAILS_MAX = 6
+LOGIN_FAILS_WINDOW = 300
 
-def generate_verification_code() -> str:
-    return "".join(random.choices(string.digits, k=VERIFICATION_CODE_LEN))
+# هویت کاربرِ درخواست جاری. با contextvar نگه داشته می‌شه تا همه‌ی لایه‌ها
+# (endpoint، لاگ فعالیت، فیلتر مالکیت دیتا) بدون پاس‌کردن دستی پارامتر ازش استفاده کنن.
+CURRENT_USER: ContextVar[dict | None] = ContextVar("hs_current_user", default=None)
 
-def is_valid_email(email: str) -> bool:
-    """اعتبارسنجی ساده‌ی ایمیل"""
-    if not email or len(email) > 254:
+
+# ── Multi-user / جداسازی پنل‌ها ───────────────────────────────────────────────
+def normalize_username(raw) -> str:
+    return str(raw or "").strip().lower()
+
+
+def is_valid_username(name: str) -> bool:
+    """نام کاربری: ۳ تا ۳۲ کاراکتر، حروف انگلیسی کوچک، رقم، زیرخط و نقطه."""
+    if not name or len(name) > 32:
         return False
-    pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
-    return bool(re.match(pattern, email))
+    return bool(USERNAME_RE.match(name))
 
-async def send_verification_email(email: str, code: str, purpose: str = "login") -> bool:
+
+def sync_admin_auth_hash(username: str, user: dict):
+    """central.py برای ثبت نود، password_hash ادمین را می‌خواند؛ آن را با هشِ
+    اکانت ادمین هم‌نام نگه می‌داریم تا اطلاعات ارسالی بی‌ربط نماند."""
+    if user.get("is_admin") and username == ADMIN_USERNAME:
+        AUTH["password_hash"] = user.get("password_hash") or AUTH["password_hash"]
+
+
+def public_user(u: dict) -> dict:
+    """نسخه‌ی قابل نمایش از کاربر (بدون هش رمز)."""
+    return {
+        "username": u.get("username"),
+        "is_admin": bool(u.get("is_admin", False)),
+        "status": u.get("status", "active"),
+        "created_at": u.get("created_at"),
+        "last_login": u.get("last_login"),
+    }
+
+
+def _username_from_email(email: str) -> str:
+    local = str(email).split("@", 1)[0]
+    name = re.sub(r"[^a-z0-9_.]", "_", local.lower()).strip("._")[:32]
+    return name or "user"
+
+
+async def migrate_legacy_users():
+    """اکانت‌هایی که در نسخه‌ی قبلی با ایمیل ثبت شده بودند، نام کاربری می‌گیرند.
+
+    هشِ رمز قدیمی (sha256) هم همچنان توسط verify_password پذیرفته می‌شود، پس
+    کاربر قدیمی با همان رمز و با نام کاربریِ ساخته‌شده از ایمیلش وارد می‌شود.
     """
-    ارسال کد تأیید به ایمیل.
-    اگه SMTP تنظیم نشده باشه، کد رو در dev_codes.json ذخیره میکنه.
-    """
-    smtp_host = os.environ.get("SMTP_HOST", "").strip()
-    smtp_port = int(os.environ.get("SMTP_PORT", "587") or "587")
-    smtp_user = os.environ.get("SMTP_USER", "").strip()
-    smtp_pass = os.environ.get("SMTP_PASS", "").strip()
-    smtp_from = os.environ.get("SMTP_FROM", smtp_user or "noreply@hspanel.local").strip()
+    legacy = {k: v for k, v in USERS.items() if isinstance(k, str) and "@" in k}
+    if not legacy:
+        return
+    for email, rec in legacy.items():
+        USERS.pop(email, None)
+        if not isinstance(rec, dict):
+            continue
+        base = _username_from_email(email)
+        name, i = base, 2
+        while name in USERS:
+            name = f"{base}{i}"[:32]
+            i += 1
+        rec["username"] = name
+        rec["legacy_email"] = email
+        rec.pop("email", None)
+        rec.pop("email_verified", None)
+        rec.setdefault("last_login", None)
+        rec.setdefault("status", "active")
+        rec.setdefault("created_at", datetime.now().isoformat())
+        USERS[name] = rec
+        logger.info(f"اکانت قدیمی {email} → نام کاربری «{name}» منتقل شد")
+    log_activity("auth", f"{len(legacy)} اکانت قدیمی (ایمیلی) به نام کاربری منتقل شد", "warn")
+    await save_state()
 
-    if purpose == "register":
-        subject = "کد تأیید ثبت‌نام HS Panel"
-        body_text = f"کد تأیید شما: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
-    elif purpose == "login":
-        subject = "کد ورود HS Panel"
-        body_text = f"کد ورود شما: {code}\nاگه شما این درخواست رو ندادید، این پیام رو نادیده بگیرید."
-    else:
-        subject = "کد بازیابی رمز HS Panel"
-        body_text = f"کد بازیابی رمز: {code}\nاین کد تا ۱۰ دقیقه معتبر است."
 
-    # همیشه کد رو در dev_codes.json ذخیره کن (backup)
-    dev_path = DATA_DIR / "dev_codes.json"
-    try:
-        dev_codes = {}
-        if dev_path.exists():
-            with open(dev_path, "r", encoding="utf-8") as f:
-                dev_codes = json.load(f)
-        dev_codes[email] = {"code": code, "purpose": purpose, "at": datetime.now().isoformat()}
-        if len(dev_codes) > 20:
-            keys_sorted = sorted(dev_codes.keys(), key=lambda k: dev_codes[k].get("at", ""))
-            for k in keys_sorted[:-20]:
-                dev_codes.pop(k, None)
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        with open(dev_path, "w", encoding="utf-8") as f:
-            json.dump(dev_codes, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.warning(f"Could not save dev_codes: {e}")
+async def ensure_admin_user() -> None:
+    """اکانت ادمین را در اولین اجرا می‌سازد (و اگر بوده، وضعیتش را ترمیم می‌کند)."""
+    async with USERS_LOCK:
+        user = USERS.get(ADMIN_USERNAME)
+        if user is None:
+            USERS[ADMIN_USERNAME] = {
+                "username": ADMIN_USERNAME,
+                "password_hash": hash_password(ADMIN_PASSWORD),
+                "is_admin": True,
+                "status": "active",
+                "created_at": datetime.now().isoformat(),
+                "last_login": None,
+            }
+            log_activity("auth", f"اکانت ادمین «{ADMIN_USERNAME}» ساخته شد", "ok")
+            logger.info(f"اکانت ادمین ساخته شد: {ADMIN_USERNAME}")
+        elif not user.get("is_admin") or user.get("status") != "active":
+            user["is_admin"] = True
+            user["status"] = "active"
+        # هش قدیمی (sha256) را موقع بالا آمدن به PBKDF2 ارتقا بده
+        stored = USERS[ADMIN_USERNAME].get("password_hash") or ""
+        if not stored.startswith("pbkdf2$"):
+            USERS[ADMIN_USERNAME]["password_hash"] = hash_password(ADMIN_PASSWORD)
+    AUTH["username"] = ADMIN_USERNAME
+    AUTH["password_hash"] = USERS[ADMIN_USERNAME]["password_hash"]
+    await save_state()
 
-    if not smtp_host or not smtp_user:
-        # حالت development: لاگ بزن و برگرد
-        logger.info(f"[DEV-MAIL] To: {email} | Code: {code} | Purpose: {purpose}")
-        return True
 
-    # ارسال واقعی ایمیل با SMTP
-    try:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
-
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = smtp_from
-        msg["To"] = email
-
-        html_body = f"""
-        <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; max-width:480px; margin:auto; padding:20px;">
-          <div style="background:linear-gradient(135deg,#6d3bf5,#8b5cf6);color:#fff;padding:20px;border-radius:12px;text-align:center;">
-            <h2 style="margin:0 0 8px;">HS Panel</h2>
-            <p style="margin:0;opacity:.9;">{subject}</p>
-          </div>
-          <div style="background:#f8f9fb;padding:24px;border-radius:0 0 12px 12px;text-align:center;">
-            <p style="margin:0 0 12px;color:#444;">کد تأیید شما:</p>
-            <div style="background:#fff;border:2px dashed #6d3bf5;border-radius:8px;padding:16px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#6d3bf5;">{code}</div>
-            <p style="margin:16px 0 0;color:#888;font-size:13px;">این کد تا ۱۰ دقیقه معتبر است.</p>
-          </div>
-        </div>
-        """
-        msg.attach(MIMEText(body_text, "plain", "utf-8"))
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
-
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_from, [email], msg.as_string())
-        logger.info(f"Verification email sent to {email} ({purpose})")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send email to {email}: {e}")
-        return False
-
-async def create_session() -> str:
+# ── Sessions ──────────────────────────────────────────────────────────────────
+async def create_session(username: str, is_admin: bool) -> str:
     token = secrets.token_urlsafe(32)
     async with SESSIONS_LOCK:
         SESSIONS[token] = {
-            "email": None,           # بعداً با bind_session_to_user پر میشه
-            "is_admin": False,
+            "username": username,
+            "is_admin": bool(is_admin),
             "exp": time.time() + SESSION_TTL,
         }
     return token
 
-async def bind_session_to_user(token: str, email: str, is_admin: bool):
-    """بعد از تأیید کد، session رو به کاربر متصل می‌کنه"""
-    async with SESSIONS_LOCK:
-        sess = SESSIONS.get(token)
-        if sess is not None:
-            sess["email"] = email
-            sess["is_admin"] = is_admin
 
 async def get_session_info(token: str) -> dict | None:
     async with SESSIONS_LOCK:
         sess = SESSIONS.get(token)
-        if not sess:
+        if not sess or not isinstance(sess, dict):
             return None
-        if sess["exp"] < time.time():
+        if sess.get("exp", 0) < time.time():
             SESSIONS.pop(token, None)
             return None
-        return {"email": sess.get("email"), "is_admin": sess.get("is_admin", False)}
+        return {
+            "username": sess.get("username"),
+            "is_admin": bool(sess.get("is_admin", False)),
+        }
+
 
 async def is_valid_session(token: str | None) -> bool:
     if not token:
@@ -548,11 +620,15 @@ async def is_valid_session(token: str | None) -> bool:
             if sess < time.time():
                 SESSIONS.pop(token, None)
                 return False
-            return True
+            sess = {"exp": sess, "username": None}
         if sess.get("exp", 0) < time.time():
             SESSIONS.pop(token, None)
             return False
+        if not sess.get("username") or sess["username"] not in USERS:
+            SESSIONS.pop(token, None)
+            return False
         return True
+
 
 async def destroy_session(token: str | None):
     if not token:
@@ -560,16 +636,124 @@ async def destroy_session(token: str | None):
     async with SESSIONS_LOCK:
         SESSIONS.pop(token, None)
 
+
+async def destroy_user_sessions(username: str, keep: str | None = None):
+    """همه‌ی سشن‌های یک کاربر را می‌بندد (بعد از تغییر رمز / بلاک / حذف اکانت)."""
+    async with SESSIONS_LOCK:
+        for tok, sess in list(SESSIONS.items()):
+            if tok == keep:
+                continue
+            if isinstance(sess, dict) and sess.get("username") == username:
+                SESSIONS.pop(tok, None)
+
+
+# ── هویت درخواست جاری ────────────────────────────────────────────────────────
+def current_identity() -> dict | None:
+    return CURRENT_USER.get()
+
+
+def current_username() -> str | None:
+    ident = CURRENT_USER.get()
+    return ident["username"] if ident else None
+
+
+def is_current_admin() -> bool:
+    ident = CURRENT_USER.get()
+    return bool(ident) and bool(ident.get("is_admin"))
+
+
+def is_system_context() -> bool:
+    """خارج از درخواست وب (استارتاپ، تسک‌های پس‌زمینه، نود ریموت) = دسترسی کامل."""
+    return CURRENT_USER.get() is None
+
+
+def can_access(record: dict | None) -> bool:
+    """ادمین (و کانتکست سیستم) همه‌ی دیتا را می‌بیند؛ کاربر عادی فقط دارایی خودش."""
+    if record is None:
+        return False
+    ident = CURRENT_USER.get()
+    if ident is None or ident.get("is_admin"):
+        return True
+    return record.get("owner") == ident["username"]
+
+
+def check_access(record: dict | None):
+    """دسترسی را بررسی می‌کند؛ در صورت نبود مجوز 404 می‌دهد (وجود رکورد لو نرود)."""
+    if not can_access(record):
+        raise HTTPException(status_code=404, detail="not found")
+
+
+def visible_items(store: dict) -> dict:
+    """فیلتر مالکیت روی یک دیکشنری {id: record} — با snapshot امن."""
+    ident = CURRENT_USER.get()
+    snap = dict(store)
+    if ident is None or ident.get("is_admin"):
+        return snap
+    return {k: v for k, v in snap.items() if v.get("owner") == ident["username"]}
+
+
 async def require_auth(request: Request):
     token = request.cookies.get(SESSION_COOKIE)
-    if not await is_valid_session(token):
+    info = await get_session_info(token) if token else None
+    if not info or not info.get("username"):
         raise HTTPException(status_code=401, detail="unauthorized")
+    user = USERS.get(info["username"])
+    if not user or user.get("status") == "blocked":
+        await destroy_session(token)
+        raise HTTPException(status_code=401, detail="unauthorized")
+    ident = {"username": info["username"], "is_admin": bool(user.get("is_admin", False))}
+    CURRENT_USER.set(ident)
     return token
+
+
+async def require_admin(request: Request):
+    token = await require_auth(request)
+    if not is_current_admin():
+        raise HTTPException(status_code=403, detail="این بخش فقط برای ادمین پنل است")
+    return token
+
+
+async def _too_many_login_attempts(key: str) -> bool:
+    now = time.time()
+    async with LOGIN_FAILS_LOCK:
+        rec = LOGIN_FAILS.get(key)
+        if not rec:
+            return False
+        if now - rec["first"] > LOGIN_FAILS_WINDOW:
+            LOGIN_FAILS.pop(key, None)
+            return False
+        return rec["count"] >= LOGIN_FAILS_MAX
+
+
+async def _note_login_failure(key: str):
+    now = time.time()
+    async with LOGIN_FAILS_LOCK:
+        rec = LOGIN_FAILS.get(key)
+        if not rec or now - rec["first"] > LOGIN_FAILS_WINDOW:
+            LOGIN_FAILS[key] = {"count": 1, "first": now}
+        else:
+            rec["count"] += 1
+
+
+async def _clear_login_failures(key: str):
+    async with LOGIN_FAILS_LOCK:
+        LOGIN_FAILS.pop(key, None)
+
+
+async def _prune_login_fails():
+    """پاک‌سازی دوره‌یی رکوردهای قدیمی تا حافظه رشد نکند."""
+    while True:
+        await asyncio.sleep(120)
+        now = time.time()
+        async with LOGIN_FAILS_LOCK:
+            for k in [k for k, v in LOGIN_FAILS.items() if now - v["first"] > LOGIN_FAILS_WINDOW * 2]:
+                LOGIN_FAILS.pop(k, None)
 
 # ── Startup / Shutdown ────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(central.heartbeat_loop())
+    asyncio.create_task(_prune_login_fails())
     global http_client
     limits = httpx.Limits(max_connections=500, max_keepalive_connections=100)
     timeout = httpx.Timeout(30.0, connect=10.0)
@@ -577,6 +761,12 @@ async def startup():
         limits=limits, timeout=timeout, follow_redirects=True,
     )
     await load_state()
+    # اکانت‌های قدیمیِ ایمیلی → نام کاربری
+    await migrate_legacy_users()
+    # اکانت ادمین (پنل اصلی/ورکر) همیشه وجود داشته باشد
+    await ensure_admin_user()
+    # ادمین یک کانفیگ پیش‌فرض داشته باشد تا پنلش خالی نباشد
+    await ensure_default_link(None)
     # مطمئن شو state فایل وجود داره (حتی اگه خالی باشه)
     await force_save_state()
     # هر ۵ دقیقه یکبار state رو سیو کن (backup ایمنی)
@@ -597,6 +787,7 @@ async def force_save_state():
             "users": dict(USERS),
             "password_hash": AUTH["password_hash"],
             "disable_logging": CONFIG.get("disable_logging", False),
+            "allow_signup": CONFIG.get("allow_signup"),
             "saved_at": datetime.now().isoformat(),
         }
         # main state file
@@ -1061,31 +1252,40 @@ async def require_node_key(request: Request) -> str:
     return matched
 
 # ── Default link ──────────────────────────────────────────────────────────────
-_default_link_created = False
+# هر اکانت یک کانفیگ پیش‌فرض مخصوص خودش دارد تا پنلش خالی نباشد.
+# owner=None یعنی دارایی پنل ادمین (شامل دیتای قدیمی/سیستمی).
+_default_link_created: set = set()
 
-async def ensure_default_link():
-    global _default_link_created
-    if _default_link_created:
+async def ensure_default_link(owner: str | None = None):
+    ident = current_identity()
+    if ident is not None and ident.get("is_admin"):
+        owner = None
+    key = owner or "__admin__"
+    if key in _default_link_created:
         return
+    seed = f"default:{owner}" if owner else "default"
+    uid = hashlib.sha256(f"{seed}{CONFIG['secret']}".encode()).hexdigest()
+    uid = f"{uid[:8]}-{uid[8:12]}-{uid[12:16]}-{uid[16:20]}-{uid[20:32]}"
     async with LINKS_LOCK:
-        if not any(l.get("is_default") for l in LINKS.values()):
-            uid = hashlib.sha256(f"default{CONFIG['secret']}".encode()).hexdigest()
-            uid = f"{uid[:8]}-{uid[8:12]}-{uid[12:16]}-{uid[16:20]}-{uid[20:32]}"
-            if uid not in LINKS:
-                LINKS[uid] = {
-                    "label": "لینک پیش‌فرض",
-                    "limit_bytes": 0,
-                    "used_bytes": 0,
-                    "created_at": datetime.now().isoformat(),
-                    "active": True,
-                    "expires_at": None,
-                    "note": "",
-                    "is_default": True,
-                    "sub_id": None,
-                    "protocol": DEFAULT_PROTOCOL,
-                }
-                asyncio.create_task(save_state())
-        _default_link_created = True
+        already = any(
+            l.get("is_default") and l.get("owner") == owner for l in LINKS.values()
+        )
+        if not already and uid not in LINKS:
+            LINKS[uid] = {
+                "label": "لینک پیش‌فرض",
+                "limit_bytes": 0,
+                "used_bytes": 0,
+                "created_at": datetime.now().isoformat(),
+                "active": True,
+                "expires_at": None,
+                "note": "",
+                "is_default": True,
+                "sub_id": None,
+                "protocol": DEFAULT_PROTOCOL,
+                "owner": owner,
+            }
+            asyncio.create_task(save_state())
+    _default_link_created.add(key)
 
 # ── Basic endpoints ───────────────────────────────────────────────────────────
 @app.get("/")
@@ -1114,10 +1314,11 @@ async def subscription_single(uuid: str):
 async def subscription_all(_=Depends(require_auth)):
     host = get_host()
     async with LINKS_LOCK:
-        allowed = [d for d in LINKS.values() if is_link_allowed(d)]
+        mine = visible_items(LINKS)
+        allowed = [d for d in mine.values() if is_link_allowed(d)]
         lines = [
             generate_share_link(uid, host, remark=f"HS-{d['label']}", protocol=d.get("protocol", DEFAULT_PROTOCOL))
-            for uid, d in LINKS.items()
+            for uid, d in mine.items()
             if is_link_allowed(d)
         ]
         total_used = sum(d.get("used_bytes", 0) for d in allowed)
@@ -1132,7 +1333,7 @@ async def subscription_all(_=Depends(require_auth)):
 # SUB GROUP endpoints (بدون تغییر)
 # ══════════════════════════════════════════════════════════════════════════════
 
-async def _create_sub_core(body: dict) -> dict:
+async def _create_sub_core(body: dict, owner: str | None = None) -> dict:
     name = (body.get("name") or "گروه جدید").strip()[:60]
     desc = (body.get("desc") or "").strip()[:200]
     password = (body.get("password") or "").strip()
@@ -1142,11 +1343,12 @@ async def _create_sub_core(body: dict) -> dict:
         SUBS[sub_id] = {
             "name": name,
             "desc": desc,
-            "password_hash": hash_password(password) if password else None,
+            "password_hash": hash_shared_password(password) if password else None,
             "uuid_key": uuid_key,
             "created_at": datetime.now().isoformat(),
             "link_ids": [],
             "node_link_ids": [],
+            "owner": owner,
         }
     asyncio.create_task(save_state())
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
@@ -1161,7 +1363,7 @@ async def _create_sub_core(body: dict) -> dict:
 @app.post("/api/subs")
 async def create_sub(request: Request, _=Depends(require_auth)):
     body = await request.json()
-    return await _create_sub_core(body)
+    return await _create_sub_core(body, owner=current_username())
 
 @app.post("/api/node/subs")
 async def node_create_sub(request: Request, key_id: str = Depends(require_node_key)):
@@ -1173,7 +1375,7 @@ async def node_create_sub(request: Request, key_id: str = Depends(require_node_k
 async def list_subs(_=Depends(require_auth)):
     host = get_host()
     async with SUBS_LOCK:
-        snap_subs = dict(SUBS)
+        snap_subs = visible_items(SUBS)
     async with LINKS_LOCK:
         snap_links = dict(LINKS)
     result = []
@@ -1207,6 +1409,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
     async with SUBS_LOCK:
         if sub_id not in SUBS:
             raise HTTPException(status_code=404, detail="sub not found")
+        check_access(SUBS[sub_id])
         s = SUBS[sub_id]
         if "name" in body:
             s["name"] = str(body["name"])[:60]
@@ -1214,7 +1417,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
             s["desc"] = str(body["desc"])[:200]
         if "password" in body:
             pw = str(body["password"]).strip()
-            s["password_hash"] = hash_password(pw) if pw else None
+            s["password_hash"] = hash_shared_password(pw) if pw else None
         if "link_ids" in body:
             s["link_ids"] = list(body["link_ids"])
         if "node_link_ids" in body:
@@ -1241,6 +1444,7 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
     async with SUBS_LOCK:
         if sub_id not in SUBS:
             raise HTTPException(status_code=404, detail="sub not found")
+        check_access(SUBS[sub_id])
         name = SUBS[sub_id].get("name", sub_id)
         del SUBS[sub_id]
     async with LINKS_LOCK:
@@ -1256,9 +1460,12 @@ async def assign_link_to_sub(sub_id: str, request: Request, _=Depends(require_au
     body = await request.json()
     link_id = str(body.get("link_id", ""))
     action = str(body.get("action", "add"))
+    async with LINKS_LOCK:
+        check_access(LINKS.get(link_id))
     async with SUBS_LOCK:
         if sub_id not in SUBS:
             raise HTTPException(status_code=404, detail="sub not found")
+        check_access(SUBS[sub_id])
         s = SUBS[sub_id]
         ids = s.setdefault("link_ids", [])
         if action == "add":
@@ -1302,7 +1509,7 @@ async def sub_group_subscription(uuid_key: str, request: Request):
         raise HTTPException(status_code=404, detail="not found")
     if sub.get("password_hash"):
         pw = request.query_params.get("pw", "")
-        if hash_password(pw) != sub["password_hash"]:
+        if not verify_password(pw, sub["password_hash"]):
             raise HTTPException(status_code=403, detail="wrong password")
     host = get_host()
     link_ids = sub.get("link_ids", [])
@@ -1361,201 +1568,127 @@ async def sub_group_subscription(uuid_key: str, request: Request):
     headers = build_sub_headers(f"پنل: {sub['name']}", total_used, total_limit, nearest_exp)
     return Response(content=content, media_type="text/plain", headers=headers)
 
-# ── Auth endpoints (ایمیل + کد تأیید) ──────────────────────────────────────
+# ── Auth endpoints (نام کاربری + رمز عبور) ───────────────────────────────────
+async def _json_body(request: Request) -> dict:
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="بدنه‌ی درخواست معتبر نیست")
+    return data if isinstance(data, dict) else {}
 
-@app.post("/api/auth/request-code")
-async def api_request_code(request: Request):
-    """
-    مرحله ۱: کاربر ایمیلش رو میفرسته.
-    - اگه کاربر جدید باشه: ثبت‌نام میشه، کد تأیید به ایمیل میره.
-    - اگه قبلاً ثبت‌نام کرده باشه: کد ورود به ایمیل میره.
-    """
-    body = await request.json()
-    email = str(body.get("email", "")).strip().lower()
 
-    if not is_valid_email(email):
-        raise HTTPException(status_code=400, detail="ایمیل نامعتبر است")
+def _validate_credentials(username: str, password: str):
+    if not username:
+        raise HTTPException(status_code=400, detail="نام کاربری را وارد کنید")
+    if not is_valid_username(username):
+        raise HTTPException(
+            status_code=400,
+            detail="نام کاربری باید ۳ تا ۳۲ کاراکتر باشد و فقط حروف انگلیسی، رقم، نقطه و زیرخط داشته باشد",
+        )
+    if not password:
+        raise HTTPException(status_code=400, detail="رمز عبور را وارد کنید")
+    if len(password) < MIN_PASSWORD_LEN:
+        raise HTTPException(status_code=400, detail=f"رمز عبور باید حداقل {MIN_PASSWORD_LEN} کاراکتر باشد")
 
-    # rate limit ساده: هر ایمیل نباید بیشتر از یک کد در ۳۰ ثانیه داشته باشه
-    async with VERIFICATION_LOCK:
-        existing = VERIFICATION_CODES.get(email)
-        if existing and existing["expires_at"] - VERIFICATION_TTL + 30 > time.time():
-            raise HTTPException(status_code=429, detail="لطفاً ۳۰ ثانیه صبر کنید و دوباره درخواست دهید")
 
-    is_new_user = email not in USERS
+async def _issue_session(username: str, is_admin: bool, **extra) -> JSONResponse:
+    token = await create_session(username, is_admin)
+    resp = JSONResponse({"ok": True, "username": username, "is_admin": is_admin, **extra})
+    resp.set_cookie(
+        SESSION_COOKIE, token,
+        max_age=SESSION_TTL, httponly=True, samesite="lax", path="/",
+    )
+    return resp
 
-    # اگه admin_email تنظیم شده، فقط اون ایمیل میتونه ادمین باشه.
-    # ولی بقیه‌ی ایمیل‌ها هم میتونن ثبت‌نام کنن و وارد بشن (به‌عنوان کاربر عادی).
-    code = generate_verification_code()
-    purpose = "register" if is_new_user else "login"
 
-    sent = await send_verification_email(email, code, purpose)
-    if not sent:
-        raise HTTPException(status_code=500, detail="خطا در ارسال ایمیل. تنظیمات SMTP را بررسی کنید.")
-
-    async with VERIFICATION_LOCK:
-        VERIFICATION_CODES[email] = {
-            "code": code,
-            "purpose": purpose,
-            "expires_at": time.time() + VERIFICATION_TTL,
-        }
-
-    log_activity("auth", f"کد تأیید به {email} ارسال شد ({purpose})", "info")
-
-    # اگه SMTP تنظیم نشده، تو dev-mode کد رو برگردون
-    dev_mode = not os.environ.get("SMTP_HOST", "").strip()
-    resp = {
-        "ok": True,
-        "email": email,
-        "is_new_user": is_new_user,
-        "expires_in": VERIFICATION_TTL,
-        "message": "کد تأیید به ایمیل شما ارسال شد" if not dev_mode
-                  else "کد تأیید ساخته شد. در حالت توسعه، کد در لاگ‌ها و data/dev_codes.json قابل مشاهده است.",
+@app.get("/api/auth/config")
+async def api_auth_config():
+    """تنظیمات صفحه‌ی ورود (بدون نیاز به احراز هویت)."""
+    return {
+        "signup_allowed": signup_enabled(),
+        "min_password_len": MIN_PASSWORD_LEN,
+        "users_count": len(USERS),
     }
-    if dev_mode:
-        # در حالت dev، کد رو هم برگردون تا بشه تست کرد
-        resp["dev_code"] = code
-    return resp
 
 
-@app.post("/api/auth/verify-code")
-async def api_verify_code(request: Request):
-    """
-    مرحله ۲: کاربر کد ۶ رقمی رو وارد میکنه.
-    - اگه ثبت‌نام باشه: ازش میخواد رمز تعیین کنه (مرحله ۳)
-    - اگه ورود باشه: session ساخته میشه و وارد میشه
-    """
-    body = await request.json()
-    email = str(body.get("email", "")).strip().lower()
-    code = str(body.get("code", "")).strip()
+@app.post("/api/auth/login")
+async def api_login(request: Request):
+    """ورود با نام کاربری و رمز عبور — تنها مسیر احراز هویت پنل."""
+    body = await _json_body(request)
+    username = normalize_username(body.get("username"))
+    password = str(body.get("password") or "")
 
-    if not is_valid_email(email):
-        raise HTTPException(status_code=400, detail="ایمیل نامعتبر است")
-    if not code or len(code) != VERIFICATION_CODE_LEN or not code.isdigit():
-        raise HTTPException(status_code=400, detail=f"کد باید {VERIFICATION_CODE_LEN} رقم باشد")
+    throttle_key = f"{client_ip(request)}|{username}"
+    if await _too_many_login_attempts(throttle_key):
+        raise HTTPException(status_code=429, detail="چند بار رمز اشتباه وارد شد — ۵ دقیقه صبر کنید")
 
-    async with VERIFICATION_LOCK:
-        vc = VERIFICATION_CODES.get(email)
-        if not vc or vc["code"] != code:
-            raise HTTPException(status_code=401, detail="کد تأیید اشتباه است")
-        if vc["expires_at"] < time.time():
-            VERIFICATION_CODES.pop(email, None)
-            raise HTTPException(status_code=401, detail="کد تأیید منقضی شده. دوباره درخواست دهید.")
-        # کد رو پاک کن (یک‌بار مصرف)
-        VERIFICATION_CODES.pop(email, None)
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="نام کاربری و رمز عبور الزامی است")
 
-    is_new_user = email not in USERS
+    user = USERS.get(username)
+    if not user or not verify_password(password, user.get("password_hash")):
+        await _note_login_failure(throttle_key)
+        log_activity("auth", f"تلاش ورود ناموفق با نام کاربری «{username or '—'}»", "err")
+        raise HTTPException(status_code=401, detail="نام کاربری یا رمز عبور اشتباه است")
 
-    if is_new_user:
-        # ثبت‌نام: برگردون pending_session_token که کاربر با اون رمز رو تنظیم میکنه
-        pending_token = secrets.token_urlsafe(32)
-        async with SESSIONS_LOCK:
-            SESSIONS[pending_token] = {
-                "email": email,
-                "is_admin": False,
-                "is_pending_registration": True,
-                "exp": time.time() + SESSION_TTL,
-            }
-        return {
-            "ok": True,
-            "stage": "set_password",
-            "email": email,
-            "pending_token": pending_token,
-            "message": "کد تأیید شد. لطفاً رمز عبور خود را تنظیم کنید.",
-        }
+    if user.get("status") == "blocked":
+        raise HTTPException(status_code=403, detail="حساب شما غیرفعال شده است — با ادمین پنل تماس بگیرید")
 
-    # کاربر قبلاً ثبت‌نام کرده: وارد میشه
-    user = USERS[email]
-    is_admin = bool(user.get("is_admin", False))
-    token = await create_session()
-    await bind_session_to_user(token, email, is_admin)
+    await _clear_login_failures(throttle_key)
 
-    log_activity("auth", f"ورود موفق {email} به پنل", "ok")
-    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email})
-    resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
-    return resp
-
-
-@app.post("/api/auth/set-password")
-async def api_set_password(request: Request):
-    """
-    مرحله ۳ (فقط برای ثبت‌نام): کاربر بعد از تأیید کد، رمز تعیین میکنه.
-    """
-    body = await request.json()
-    pending_token = str(body.get("pending_token", "")).strip()
-    password = str(body.get("password", ""))
-
-    if not pending_token:
-        raise HTTPException(status_code=400, detail="توکن نامعتبر است")
-    if len(password) < 6:
-        raise HTTPException(status_code=400, detail="رمز عبور باید حداقل ۶ کاراکتر باشد")
-
-    async with SESSIONS_LOCK:
-        sess = SESSIONS.get(pending_token)
-        if not sess or not sess.get("is_pending_registration"):
-            raise HTTPException(status_code=401, detail="توکن منقضی شده. از اول شروع کنید.")
-        email = sess.get("email")
-        if not email:
-            raise HTTPException(status_code=400, detail="ایمیل نامعتبر")
-
-    # اولین کاربر = ادمین (اگه admin_email تنظیم نشده)
-    is_admin = False
-    if not USERS:  # هیچ کاربری ثبت‌نام نکرده
-        is_admin = True
-    elif email == ADMIN_EMAIL:
-        is_admin = True
-
-    USERS[email] = {
-        "email": email,
-        "password_hash": hash_password(password),
-        "is_admin": is_admin,
-        "email_verified": True,
-        "created_at": datetime.now().isoformat(),
-        "last_login": datetime.now().isoformat(),
-    }
-    await save_state()
-
-    # pending session رو به session واقعی تبدیل کن
-    async with SESSIONS_LOCK:
-        SESSIONS.pop(pending_token, None)
-    token = await create_session()
-    await bind_session_to_user(token, email, is_admin)
-
-    log_activity("auth", f"کاربر جدید ثبت‌نام کرد: {email} (ادمین: {is_admin})", "ok")
-
-    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email, "message": "ثبت‌نام کامل شد"})
-    resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
-    return resp
-
-
-@app.post("/api/auth/login-password")
-async def api_login_password(request: Request):
-    """
-    ورود با رمز عبور (برای کاربرانی که قبلاً ثبت‌نام کرده‌اند).
-    جایگزین ساده برای ایمیل+کد برای دستگاه‌های مورد اعتماد.
-    """
-    body = await request.json()
-    email = str(body.get("email", "")).strip().lower()
-    password = str(body.get("password", ""))
-
-    if not is_valid_email(email) or not password:
-        raise HTTPException(status_code=400, detail="ایمیل و رمز عبور الزامی است")
-
-    user = USERS.get(email)
-    if not user or user.get("password_hash") != hash_password(password):
-        log_activity("auth", f"تلاش ورود ناموفق با رمز از {email}", "err")
-        raise HTTPException(status_code=401, detail="ایمیل یا رمز عبور اشتباه است")
+    # ارتقای بی‌صدا از هش قدیمی به PBKDF2
+    if not str(user.get("password_hash") or "").startswith("pbkdf2$"):
+        user["password_hash"] = hash_password(password)
 
     is_admin = bool(user.get("is_admin", False))
-    token = await create_session()
-    await bind_session_to_user(token, email, is_admin)
     user["last_login"] = datetime.now().isoformat()
+    CURRENT_USER.set({"username": username, "is_admin": is_admin})
+    log_activity("auth", f"ورود موفق «{username}» به پنل", "ok")
+    asyncio.create_task(save_state())
+    return await _issue_session(username, is_admin)
+
+
+@app.post("/api/auth/register")
+async def api_register(request: Request):
+    """ساخت اکانت جدید با نام کاربری و رمز عبور (پنل هر کاربر کاملاً جداست)."""
+    if not signup_enabled():
+        raise HTTPException(status_code=403, detail="ثبت‌نام فعال نیست — از ادمین بخواهید برایتان اکانت بسازد")
+    body = await _json_body(request)
+    username = normalize_username(body.get("username"))
+    password = str(body.get("password") or "")
+    confirm = body.get("password_confirm")
+    if confirm not in (None, "") and str(confirm) != password:
+        raise HTTPException(status_code=400, detail="رمزها یکسان نیستند")
+    _validate_credentials(username, password)
+
+    async with USERS_LOCK:
+        if username in USERS:
+            raise HTTPException(status_code=409, detail="این نام کاربری قبلاً ثبت شده است")
+        # اگر هنوز هیچ ادمینی نباشد، اولین کاربر ادمین می‌شود
+        is_admin = not any(bool(u.get("is_admin")) for u in USERS.values())
+        USERS[username] = {
+            "username": username,
+            "password_hash": hash_password(password),
+            "is_admin": is_admin,
+            "status": "active",
+            "created_at": datetime.now().isoformat(),
+            "last_login": datetime.now().isoformat(),
+            "note": str(body.get("note") or "")[:200],
+        }
+
+    await ensure_default_link(username)
     await save_state()
 
-    log_activity("auth", f"ورود موفق {email} با رمز عبور", "ok")
-    resp = JSONResponse({"ok": True, "is_admin": is_admin, "email": email})
-    resp.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, samesite="lax", path="/")
-    return resp
+    CURRENT_USER.set({"username": username, "is_admin": is_admin})
+    log_activity("auth", f"اکانت جدید ساخته شد: «{username}»" + (" (ادمین)" if is_admin else ""), "ok")
+    return await _issue_session(username, is_admin, message="ثبت‌نام کامل شد")
+
+
+@app.post("/api/auth/login-legacy")
+async def api_login_legacy(request: Request):
+    """سازگاری با کلاینت‌های قدیمی: /api/auth/login-password و request-code حذف شده‌اند؛
+    این مسیر فقط پیام راهنما می‌دهد تا نسخه‌ی قدیمی فرانت‌اند گیج نشود."""
+    raise HTTPException(status_code=410, detail="ورود با ایمیل/کد تأیید حذف شده است — با نام کاربری و رمز عبور وارد شوید")
 
 
 @app.post("/api/logout")
@@ -1565,45 +1698,232 @@ async def api_logout(request: Request):
     resp.delete_cookie(SESSION_COOKIE, path="/")
     return resp
 
+
 @app.get("/api/me")
 async def api_me(request: Request):
     token = request.cookies.get(SESSION_COOKIE)
-    valid = await is_valid_session(token)
-    info = await get_session_info(token) if valid else None
+    info = await get_session_info(token) if token else None
+    if not info or not info.get("username") or info["username"] not in USERS:
+        return {
+            "authenticated": False,
+            "username": None,
+            "is_admin": False,
+            "signup_allowed": signup_enabled(),
+            "min_password_len": MIN_PASSWORD_LEN,
+        }
+    user = USERS[info["username"]]
     return {
-        "authenticated": valid,
-        "email": info["email"] if info else None,
-        "is_admin": info["is_admin"] if info else False,
+        "authenticated": True,
+        "username": info["username"],
+        "is_admin": bool(user.get("is_admin", False)),
+        "created_at": user.get("created_at"),
+        "signup_allowed": signup_enabled(),
+        "min_password_len": MIN_PASSWORD_LEN,
     }
+
 
 @app.post("/api/change-password")
 async def api_change_password(request: Request, token=Depends(require_auth)):
-    """تغییر رمز عبور (کاربر لاگین کرده)"""
-    body = await request.json()
-    current = str(body.get("current_password", ""))
-    new = str(body.get("new_password", ""))
+    """تغییر رمز عبور همان کاربرِ لاگین‌شده."""
+    body = await _json_body(request)
+    current = str(body.get("current_password") or "")
+    new = str(body.get("new_password") or "")
+    if len(new) < MIN_PASSWORD_LEN:
+        raise HTTPException(status_code=400, detail=f"رمز جدید باید حداقل {MIN_PASSWORD_LEN} کاراکتر باشد")
 
-    if len(new) < 6:
-        raise HTTPException(status_code=400, detail="رمز جدید باید حداقل ۶ کاراکتر باشد")
-
-    info = await get_session_info(token)
-    email = info["email"] if info else None
-    if not email:
-        raise HTTPException(status_code=401, detail="unauthorized")
-
-    user = USERS.get(email)
+    ident = current_identity() or {}
+    username = ident.get("username")
+    user = USERS.get(username or "")
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
-    if user.get("password_hash") != hash_password(current):
+    if not verify_password(current, user.get("password_hash")):
         raise HTTPException(status_code=400, detail="رمز فعلی اشتباه است")
 
     user["password_hash"] = hash_password(new)
+    sync_admin_auth_hash(username, user)
     await save_state()
-    log_activity("auth", f"کاربر {email} رمز عبورش رو تغییر داد", "ok")
+    # بقیه‌ی دستگاه‌ها باید دوباره وارد شوند
+    await destroy_user_sessions(username, keep=token)
+    log_activity("auth", f"«{username}» رمز عبورش را تغییر داد", "ok")
     return {"ok": True}
+
+
+# ── مدیریت کاربران (فقط ادمین پنل) ───────────────────────────────────────────
+def _user_usage(username: str | None, links_snap: dict, subs_snap: dict) -> dict:
+    links = [l for l in links_snap.values() if l.get("owner") == username]
+    subs = [s for s in subs_snap.values() if s.get("owner") == username]
+    return {
+        "links_count": len(links),
+        "active_links": sum(1 for l in links if is_link_allowed(l)),
+        "subs_count": len(subs),
+        "used_bytes": sum(int(l.get("used_bytes") or 0) for l in links),
+    }
+
+
+@app.get("/api/users")
+async def api_list_users(_=Depends(require_admin)):
+    async with LINKS_LOCK:
+        links_snap = dict(LINKS)
+    async with SUBS_LOCK:
+        subs_snap = dict(SUBS)
+    out = []
+    for uname, u in USERS.items():
+        row = public_user(u)
+        # هش رمز هرگز از API بیرون نمی‌رود
+        row.update(_user_usage(None if u.get("is_admin") else uname, links_snap, subs_snap))
+        if u.get("is_admin"):
+            # پنل ادمین شامل دارایی‌های بی‌صاحب (قدیمی/سیستمی) هم می‌شود
+            admin_links = [l for l in links_snap.values() if not l.get("owner") or l.get("owner") == uname]
+            admin_subs = [s for s in subs_snap.values() if not s.get("owner") or s.get("owner") == uname]
+            row.update({
+                "links_count": len(admin_links),
+                "active_links": sum(1 for l in admin_links if is_link_allowed(l)),
+                "subs_count": len(admin_subs),
+                "used_bytes": sum(int(l.get("used_bytes") or 0) for l in admin_links),
+            })
+        row["note"] = str(u.get("note") or "")
+        out.append(row)
+    out.sort(key=lambda r: (not r["is_admin"], r["username"]))
+    return {"users": out, "count": len(out), "signup_allowed": signup_enabled()}
+
+
+@app.post("/api/users")
+async def api_create_user(request: Request, _=Depends(require_admin)):
+    """ساخت اکانت توسط ادمین (برای وقتی که ثبت‌نام عمومی خاموش است)."""
+    body = await _json_body(request)
+    username = normalize_username(body.get("username"))
+    password = str(body.get("password") or "")
+    _validate_credentials(username, password)
+    is_admin = bool(body.get("is_admin"))
+
+    async with USERS_LOCK:
+        if username in USERS:
+            raise HTTPException(status_code=409, detail="این نام کاربری قبلاً ثبت شده است")
+        USERS[username] = {
+            "username": username,
+            "password_hash": hash_password(password),
+            "is_admin": is_admin,
+            "status": "active",
+            "created_at": datetime.now().isoformat(),
+            "last_login": None,
+            "note": str(body.get("note") or "")[:200],
+        }
+    if not is_admin:
+        await ensure_default_link(username)
+    await save_state()
+    log_activity("auth", f"اکانت «{username}» توسط ادمین ساخته شد", "ok")
+    return {"ok": True, "user": public_user(USERS[username])}
+
+
+@app.patch("/api/users/{username}")
+async def api_update_user(username: str, request: Request, _=Depends(require_admin)):
+    body = await _json_body(request)
+    username = normalize_username(username)
+    user = USERS.get(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="کاربر پیدا نشد")
+
+    actor = (current_identity() or {}).get("username") or "system"
+    if "password" in body:
+        new_pw = str(body.get("password") or "")
+        if len(new_pw) < MIN_PASSWORD_LEN:
+            raise HTTPException(status_code=400, detail=f"رمز باید حداقل {MIN_PASSWORD_LEN} کاراکتر باشد")
+        user["password_hash"] = hash_password(new_pw)
+        sync_admin_auth_hash(username, user)
+        await destroy_user_sessions(username)
+        log_activity("auth", f"رمز اکانت «{username}» توسط «{actor}» بازنشانی شد", "warn")
+
+    if "status" in body:
+        status = str(body.get("status") or "").strip().lower()
+        if status not in ("active", "blocked"):
+            raise HTTPException(status_code=400, detail="وضعیت باید active یا blocked باشد")
+        if status == "blocked" and user.get("is_admin"):
+            if not any(bool(u.get("is_admin")) and u is not user for u in USERS.values()):
+                raise HTTPException(status_code=400, detail="آخرین ادمین پنل قابل مسدود کردن نیست")
+        user["status"] = status
+        if status == "blocked":
+            await destroy_user_sessions(username)
+        log_activity(
+            "auth",
+            f"اکانت «{username}» {'مسدود' if status == 'blocked' else 'فعال'} شد (توسط «{actor}»)",
+            "warn",
+        )
+
+    if "is_admin" in body:
+        want_admin = bool(body.get("is_admin"))
+        if want_admin:
+            user["is_admin"] = True
+        else:
+            if not any(bool(u.get("is_admin")) and u is not user for u in USERS.values()):
+                raise HTTPException(status_code=400, detail="حداقل یک ادمین باید باقی بماند")
+            user["is_admin"] = False
+        log_activity(
+            "auth",
+            f"سطح دسترسی «{username}» به {'ادمین' if user['is_admin'] else 'کاربر'} تغییر کرد (توسط «{actor}»)",
+            "warn",
+        )
+
+    if "note" in body:
+        user["note"] = str(body.get("note") or "")[:200]
+
+    await save_state()
+    return {"ok": True, "user": public_user(user)}
+
+
+@app.delete("/api/users/{username}")
+async def api_delete_user(username: str, request: Request, _=Depends(require_admin)):
+    """حذف اکانت. با purge=true دارایی‌های کاربر هم حذف می‌شود، وگرنه به پنل ادمین منتقل می‌شود."""
+    username = normalize_username(username)
+    user = USERS.get(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="کاربر پیدا نشد")
+    if user.get("is_admin"):
+        if not any(bool(u.get("is_admin")) and u is not user for u in USERS.values()):
+            raise HTTPException(status_code=400, detail="حساب ادمین اصلی قابل حذف نیست")
+    purge = str(request.query_params.get("purge", "")).lower() in ("1", "true", "yes")
+
+    removed_links = 0
+    if purge:
+        async with LINKS_LOCK:
+            dead = [uid for uid, l in LINKS.items() if l.get("owner") == username]
+        for uid in dead:
+            async with LINKS_LOCK:
+                rec = LINKS.pop(uid, None)
+            if not rec:
+                continue
+            removed_links += 1
+            if rec.get("protocol") == "mtproto":
+                await mtproto.stop_instance(uid)
+                proxy_id = rec.get("mtproto_proxy_id")
+                if proxy_id:
+                    asyncio.create_task(bottokentcpproxy.delete_public_proxy(proxy_id))
+        async with SUBS_LOCK:
+            for sid in [s for s, v in SUBS.items() if v.get("owner") == username]:
+                SUBS.pop(sid, None)
+    else:
+        # دارایی‌ها بی‌صاحب می‌شوند تا در پنل ادمین باقی بمانند
+        async with LINKS_LOCK:
+            for l in LINKS.values():
+                if l.get("owner") == username:
+                    l["owner"] = None
+        async with SUBS_LOCK:
+            for s in SUBS.values():
+                if s.get("owner") == username:
+                    s["owner"] = None
+
+    async with USERS_LOCK:
+        USERS.pop(username, None)
+    await destroy_user_sessions(username)
+    await save_state()
+    log_activity(
+        "auth",
+        f"اکانت «{username}» حذف شد" + (f" ({removed_links} کانفیگ پاک شد)" if purge else " (دیتا به پنل ادمین منتقل شد)"),
+        "err",
+    )
+    return {"ok": True, "deleted": username, "purged_links": removed_links}
 # ── Backup / Restore ──────────────────────────────────────────────────────────
 @app.get("/api/backup/export")
-async def backup_export(_=Depends(require_auth)):
+async def backup_export(_=Depends(require_admin)):
     async with LINKS_LOCK:
         links_snap = dict(LINKS)
     async with SUBS_LOCK:
@@ -1623,6 +1943,17 @@ async def backup_export(_=Depends(require_auth)):
         "nodes": nodes_snap,
         "password_hash": AUTH["password_hash"],
     }
+    ident = current_identity() or {}
+    if not (ident.get("is_admin") or is_system_context()):
+        # کاربر عادی فقط دارایی‌های خودش را بکاپ می‌گیرد
+        mine = {k: v for k, v in data["links"].items() if v.get("owner") == ident.get("username")}
+        my_subs = {k: v for k, v in data["subs"].items() if v.get("owner") == ident.get("username")}
+        data["links"] = mine
+        data["subs"] = my_subs
+        data["node_keys"] = {}
+        data["nodes"] = {}
+        data["owner"] = ident.get("username")
+        data["password_hash"] = None
     content = json.dumps(data, ensure_ascii=False, indent=2)
     filename = f"hs-panel-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
     log_activity("system", "فایل بکاپ دانلود شد", "info")
@@ -1634,7 +1965,7 @@ async def backup_export(_=Depends(require_auth)):
 
 
 @app.post("/api/backup/import")
-async def backup_import(request: Request, _=Depends(require_auth)):
+async def backup_import(request: Request, _=Depends(require_admin)):
     body = await request.json()
     data = body.get("data")
     if not isinstance(data, dict):
@@ -1678,12 +2009,14 @@ async def backup_import(request: Request, _=Depends(require_auth)):
 
     if not keep_password and new_pw_hash:
         AUTH["password_hash"] = new_pw_hash
+        keep_token = request.cookies.get(SESSION_COOKIE)
         async with SESSIONS_LOCK:
+            sess = SESSIONS.get(keep_token) if keep_token else None
             SESSIONS.clear()
             # سشن فعلی رو نگه می‌داریم که کاربر لاگ‌اوت نشه
-            token = request.cookies.get(SESSION_COOKIE)
-            if token:
-                SESSIONS[token] = time.time() + SESSION_TTL
+            if isinstance(sess, dict):
+                sess["exp"] = time.time() + SESSION_TTL
+                SESSIONS[keep_token] = sess
 
     await save_state()
 
@@ -1699,29 +2032,41 @@ async def backup_import(request: Request, _=Depends(require_auth)):
 # ── Stats ─────────────────────────────────────────────────────────────────────
 @app.get("/stats")
 async def get_stats(_=Depends(require_auth)):
+    ident = current_identity() or {}
+    admin = bool(ident.get("is_admin")) or is_system_context()
     async with LINKS_LOCK:
-        snap = dict(LINKS)
+        snap = visible_items(LINKS)
+    async with SUBS_LOCK:
+        subs_snap = visible_items(SUBS)
+    # آمار برای کاربر عادی فقط از دارایی‌های خودش حساب می‌شود
+    own_bytes = sum(int(l.get("used_bytes") or 0) for l in snap.values())
+    own_conns = len(connections) if admin else sum(
+        1 for c in connections.values() if c.get("uuid") in snap
+    )
+    hourly = dict(hourly_traffic) if admin else {}
     return {
-        "active_connections": len(connections),
-        "total_traffic_mb": round(stats["total_bytes"] / (1024 ** 2), 2),
-        "total_requests": stats["total_requests"],
-        "total_errors": stats["total_errors"],
+        "active_connections": own_conns,
+        "total_traffic_mb": round((stats["total_bytes"] if admin else own_bytes) / (1024 ** 2), 2),
+        "total_requests": stats["total_requests"] if admin else 0,
+        "total_errors": stats["total_errors"] if admin else 0,
         "uptime": uptime(),
         "timestamp": datetime.now().isoformat(),
-        "hourly": dict(hourly_traffic),
-        "recent_errors": list(error_logs)[-10:],
+        "hourly": hourly,
+        "recent_errors": list(error_logs)[-10:] if admin else [],
         "links_count": len(snap),
         "active_links": sum(1 for l in snap.values() if is_link_allowed(l)),
         "expired_links": sum(1 for l in snap.values() if is_link_expired(l)),
-        "subs_count": len(SUBS),
+        "subs_count": len(subs_snap),
+        "username": ident.get("username"),
+        "is_admin": bool(ident.get("is_admin")),
     }
 
 @app.get("/api/bot-tcp-proxy/domains")
-async def api_bot_tcp_proxy_domains(_=Depends(require_auth)):
+async def api_bot_tcp_proxy_domains(_=Depends(require_admin)):
     return {"domains": bottokentcpproxy.get_known_domains()}
 
 @app.post("/api/bot-tcp-proxy/start")
-async def api_bot_tcp_proxy_start(request: Request, _=Depends(require_auth)):
+async def api_bot_tcp_proxy_start(request: Request, _=Depends(require_admin)):
     body = await request.json()
     token = str(body.get("token", "")).strip()
     # هر لینک MTProto پورت جدای خودش رو داره (per-instance)، پس پورت باید
@@ -1744,7 +2089,7 @@ async def api_bot_tcp_proxy_start(request: Request, _=Depends(require_auth)):
     return {"ok": True}
 
 @app.post("/api/mtproto/fix-proxy")
-async def api_mtproto_fix_proxy(request: Request, _=Depends(require_auth)):
+async def api_mtproto_fix_proxy(request: Request, _=Depends(require_admin)):
     """راه مستقیم برای درست‌کردن لینک‌های MTProto بدون TCP Proxy:
     توکن Railway رو (اگه فرستاده بشه) ذخیره می‌کنه و بعد برای همه‌ی لینک‌های
     MTProto که هنوز TCP Proxy عمومی ندارن، یکی می‌سازه — بدون نیاز به طی‌کردن
@@ -1804,11 +2149,12 @@ async def api_mtproto_stats(uid: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         if uid not in LINKS:
             raise HTTPException(status_code=404, detail="link not found")
+        check_access(LINKS[uid])
     return await mtproto.get_stats(uid)
 
 
 @app.post("/api/zeus-proxy/create")
-async def api_zeus_proxy_create(request: Request, _=Depends(require_auth)):
+async def api_zeus_proxy_create(request: Request, _=Depends(require_admin)):
     """ساخت پروکسی Zeus با پشتیبانی از محدودیت حجم، انقضا و اتصال per IP."""
     body = {}
     try:
@@ -1835,17 +2181,17 @@ async def api_zeus_proxy_create(request: Request, _=Depends(require_auth)):
     return {"ok": True, **result}
 
 @app.get("/api/zeus-proxy/status")
-async def api_zeus_proxy_status(_=Depends(require_auth)):
+async def api_zeus_proxy_status(_=Depends(require_admin)):
     return zeussocks5.get_zeus_status()
 
 @app.post("/api/zeus-proxy/delete")
-async def api_zeus_proxy_delete(_=Depends(require_auth)):
+async def api_zeus_proxy_delete(_=Depends(require_admin)):
     await zeussocks5.delete_zeus_proxy()
     log_activity("system", "پروکسی Zeus حذف شد", "warn")
     return {"ok": True}
 
 @app.post("/api/zeus-proxy/config")
-async def api_zeus_proxy_config(request: Request, _=Depends(require_auth)):
+async def api_zeus_proxy_config(request: Request, _=Depends(require_admin)):
     """تغییر کانفیگ‌های پروکسی Zeus (حجم/انقضا/اتصال per IP) بدون ری‌استارت."""
     body = {}
     try:
@@ -1863,14 +2209,14 @@ async def api_zeus_proxy_config(request: Request, _=Depends(require_auth)):
     log_activity("system", f"کانفیگ پروکسی Zeus آپدیت شد", "ok")
     return {"ok": True, "config": cfg}
 @app.post("/api/bot-tcp-proxy/stop")
-async def api_bot_tcp_proxy_stop(_=Depends(require_auth)):
+async def api_bot_tcp_proxy_stop(_=Depends(require_admin)):
     stopped = bottokentcpproxy.stop_job()
     if stopped:
         log_activity("system", "جست‌وجوی TCP Proxy متوقف شد", "warn")
     return {"ok": True, "stopped": stopped}
 
 @app.get("/api/bot-tcp-proxy/status")
-async def api_bot_tcp_proxy_status(_=Depends(require_auth)):
+async def api_bot_tcp_proxy_status(_=Depends(require_admin)):
     return bottokentcpproxy.get_status()
 
 @app.post("/api/bot-tcp-proxy/attach")
@@ -1953,7 +2299,7 @@ async def api_bot_tcp_proxy_attach(request: Request, _=Depends(require_auth)):
 
 
 @app.post("/api/domain-gen/start")
-async def api_domain_gen_start(request: Request, _=Depends(require_auth)):
+async def api_domain_gen_start(request: Request, _=Depends(require_admin)):
     body = await request.json()
     token = str(body.get("token", "")).strip()
     port = int(body.get("port") or CONFIG["port"])
@@ -1966,28 +2312,37 @@ async def api_domain_gen_start(request: Request, _=Depends(require_auth)):
     return {"ok": True}
 
 @app.post("/api/domain-gen/stop")
-async def api_domain_gen_stop(_=Depends(require_auth)):
+async def api_domain_gen_stop(_=Depends(require_admin)):
     stopped = botgeneratedomin.stop_job()
     if stopped:
         log_activity("system", "ساخت دامنه متوقف شد", "warn")
     return {"ok": True, "stopped": stopped}
 
 @app.get("/api/domain-gen/status")
-async def api_domain_gen_status(_=Depends(require_auth)):
+async def api_domain_gen_status(_=Depends(require_admin)):
     return botgeneratedomin.get_status()
 
 # ── Activity Logs ─────────────────────────────────────────────────────────────
 @app.get("/api/activity")
 async def get_activity(_=Depends(require_auth)):
-    return {"logs": list(activity_logs)[-150:]}
+    ident = current_identity() or {}
+    logs = list(activity_logs)
+    # کاربر عادی فقط رویدادهای خودش را می‌بیند (رویدادهای ادمین/سیستم بدون owner هستند)
+    if not (ident.get("is_admin") or is_system_context()):
+        logs = [l for l in logs if l.get("owner") == ident.get("username")]
+    return {"logs": logs[-150:]}
 
 # ── Live connections (with IP) ────────────────────────────────────────────────
 @app.get("/api/connections")
 async def get_connections(_=Depends(require_auth)):
     async with LINKS_LOCK:
-        snap = dict(LINKS)
+        snap = visible_items(LINKS)
+    ident = current_identity() or {}
+    restricted = not (ident.get("is_admin") or is_system_context())
     grouped: dict[str, dict] = {}
     for conn_id, c in connections.items():
+        if restricted and c.get("uuid") not in snap:
+            continue
         ip = c.get("ip", "نامشخص")
         link = snap.get(c.get("uuid"))
         label = link.get("label") if link else "نامشخص"
@@ -2014,6 +2369,8 @@ async def get_connections(_=Depends(require_auth)):
             if not g["last_connected_at"] or ca > g["last_connected_at"]:
                 g["last_connected_at"] = ca
     for uid, link in snap.items():
+        if restricted:
+            continue  # کانفیگ‌های MTProto فقط در پنل ادمین دیده می‌شوند
         if link.get("protocol") == "mtproto":
             label = link.get("label", "نامشخص")
             for c in mtproto.get_instance_connections(uid):
@@ -2050,7 +2407,7 @@ async def get_connections(_=Depends(require_auth)):
     }
 
 # ── Link Management ───────────────────────────────────────────────────────────
-async def _create_link_core(body: dict) -> dict:
+async def _create_link_core(body: dict, owner: str | None = None) -> dict:
     label = (body.get("label") or "لینک جدید").strip()[:60]
     lv = float(body.get("limit_value") or 0)
     lu = body.get("limit_unit") or "GB"
@@ -2107,9 +2464,18 @@ async def _create_link_core(body: dict) -> dict:
         "static_ip": static_ip or None,
         "ip_version": ip_version,
         "port": port,
+        "owner": owner,
     }
 
+    # MTProto زیرساخت سراسری می‌خواهد (توکن Railway + TCP Proxy + پورت‌های ورکر)،
+    # پس فقط پنل ادمین می‌تواند آن را بسازد/مدیریت کند.
     if protocol == "mtproto":
+        ident = current_identity()
+        if ident is not None and not ident.get("is_admin"):
+            raise HTTPException(
+                status_code=403,
+                detail="ساخت کانفیگ MTProto فقط در پنل ادمین مجاز است (توکن Railway و TCP Proxy در اختیار ادمین است)",
+            )
         raw_port = body.get("mtproto_port")
         manual_port = int(raw_port) if raw_port not in (None, "", 0, "0") else None
         if manual_port is not None and not (1 <= manual_port <= 65535):
@@ -2180,10 +2546,14 @@ async def _create_link_core(body: dict) -> dict:
 
     if sub_id:
         async with SUBS_LOCK:
-            if sub_id in SUBS:
-                ids = SUBS[sub_id].setdefault("link_ids", [])
+            target_sub = SUBS.get(sub_id)
+            if target_sub is not None and can_access(target_sub):
+                ids = target_sub.setdefault("link_ids", [])
                 if uid not in ids:
                     ids.append(uid)
+                target_sub["owner"] = target_sub.get("owner") or owner
+            else:
+                link_data["sub_id"] = None
 
     asyncio.create_task(save_state())
     log_activity("link", f"کانفیگ «{label}» ساخته شد", "ok")
@@ -2199,7 +2569,7 @@ async def _create_link_core(body: dict) -> dict:
 @app.post("/api/links")
 async def create_link(request: Request, _=Depends(require_auth)):
     body = await request.json()
-    return await _create_link_core(body)
+    return await _create_link_core(body, owner=current_username())
 
 @app.post("/api/node/links")
 async def node_create_link(request: Request, key_id: str = Depends(require_node_key)):
@@ -2212,7 +2582,7 @@ async def node_create_link(request: Request, key_id: str = Depends(require_node_
 async def list_links(_=Depends(require_auth)):
     host = get_host()
     async with LINKS_LOCK:
-        snap = dict(LINKS)
+        snap = visible_items(LINKS)
     result = []
     for uid, d in snap.items():
         proto = d.get("protocol", DEFAULT_PROTOCOL)
@@ -2307,6 +2677,8 @@ async def test_link(uid: str, _=Depends(require_auth)):
 
     async with LINKS_LOCK:
         link = LINKS.get(uid)
+        if link is not None:
+            check_access(link)
 
     if not link:
         return {"ok": False, "error": "config not found"}
@@ -2381,6 +2753,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if uid not in LINKS:
             raise HTTPException(status_code=404, detail="link not found")
         link = LINKS[uid]
+        check_access(link)
         old_sub = link.get("sub_id")
         label = link.get("label")
 
@@ -2517,6 +2890,7 @@ async def update_ad_tag(uid: str, request: Request, _=Depends(require_auth)):
         if uid not in LINKS:
             raise HTTPException(status_code=404, detail="link not found")
         link = LINKS[uid]
+        check_access(link)
         if link.get("protocol") != "mtproto":
             raise HTTPException(status_code=400, detail="این کانفیگ MTProto نیست")
         link["ad_tag_status"] = "pending"   # ← جدید
@@ -2533,6 +2907,7 @@ async def get_ad_tag_status(uid: str, _=Depends(require_auth)):
         link = LINKS.get(uid)
         if not link:
             raise HTTPException(status_code=404, detail="link not found")
+        check_access(link)
         return {
             "status": link.get("ad_tag_status", "idle"),
             "link": link.get("ad_tag_link"),
@@ -2544,6 +2919,7 @@ async def delete_link(uid: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         if uid not in LINKS:
             raise HTTPException(status_code=404, detail="link not found")
+        check_access(LINKS[uid])
         label = LINKS[uid].get("label", uid)
         sub_id = LINKS[uid].get("sub_id")
         proto = LINKS[uid].get("protocol")
@@ -2585,7 +2961,7 @@ async def node_handshake(request: Request, key_id: str = Depends(require_node_ke
         given = str(body.get("password") or "")
         if not given:
             raise HTTPException(status_code=401, detail="PASSWORD_REQUIRED")
-        if hash_password(given) != pw_hash:
+        if not verify_password(given, pw_hash):
             raise HTTPException(status_code=401, detail="PASSWORD_INVALID")
     peer_host = str(body.get("host") or "").strip()[:120] or client_ip(request)
     async with NODE_KEYS_LOCK:
@@ -2675,7 +3051,7 @@ async def node_delete_link(uid: str, key_id: str = Depends(require_node_key)):
 # Node linking — outbound (این پنل به نودهای دیگر وصل می‌شود)
 # ══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/nodes/keys")
-async def list_node_keys(_=Depends(require_auth)):
+async def list_node_keys(_=Depends(require_admin)):
     host = get_host()
     async with NODE_KEYS_LOCK:
         snap = dict(NODE_KEYS)
@@ -2705,7 +3081,7 @@ def _node_key_share(body_share) -> dict:
 
 
 @app.post("/api/nodes/keys")
-async def create_node_key(request: Request, _=Depends(require_auth)):
+async def create_node_key(request: Request, _=Depends(require_admin)):
     try:
         body = await request.json()
     except Exception:
@@ -2726,7 +3102,7 @@ async def create_node_key(request: Request, _=Depends(require_auth)):
             "revoked": False,
             "share": share,
             "can_manage": can_manage,
-            "password_hash": hash_password(password) if password else None,
+            "password_hash": hash_shared_password(password) if password else None,
             "last_used_at": None,
             "peer_host": None,
             "use_count": 0,
@@ -2740,7 +3116,7 @@ async def create_node_key(request: Request, _=Depends(require_auth)):
 
 
 @app.patch("/api/nodes/keys/{key_id}")
-async def update_node_key(key_id: str, request: Request, _=Depends(require_auth)):
+async def update_node_key(key_id: str, request: Request, _=Depends(require_admin)):
     try:
         body = await request.json()
     except Exception:
@@ -2759,7 +3135,7 @@ async def update_node_key(key_id: str, request: Request, _=Depends(require_auth)
             entry["can_manage"] = bool(body.get("can_manage"))
         if "password" in body:
             pw = str(body.get("password") or "").strip()
-            entry["password_hash"] = hash_password(pw) if pw else None
+            entry["password_hash"] = hash_shared_password(pw) if pw else None
         if "enabled" in body:
             entry["revoked"] = not bool(body.get("enabled"))
         label = entry.get("label", key_id[:8])
@@ -2771,7 +3147,7 @@ async def update_node_key(key_id: str, request: Request, _=Depends(require_auth)
 
 
 @app.delete("/api/nodes/keys/{key_id}")
-async def revoke_node_key(key_id: str, _=Depends(require_auth)):
+async def revoke_node_key(key_id: str, _=Depends(require_admin)):
     async with NODE_KEYS_LOCK:
         entry = NODE_KEYS.get(key_id)
         if entry is None:
@@ -2784,7 +3160,7 @@ async def revoke_node_key(key_id: str, _=Depends(require_auth)):
 
 
 @app.get("/api/nodes/aggregate")
-async def nodes_aggregate(request: Request, _=Depends(require_auth)):
+async def nodes_aggregate(request: Request, _=Depends(require_admin)):
     fresh = request.query_params.get("fresh") in ("1", "true", "yes")
     async with NODES_LOCK:
         snap = {nid: dict(n) for nid, n in NODES.items()}
@@ -2894,7 +3270,7 @@ async def _fetch_node_snapshot(node_id: str, node: dict, *, fresh: bool = False)
 
 
 @app.get("/api/nodes")
-async def list_nodes(_=Depends(require_auth)):
+async def list_nodes(_=Depends(require_admin)):
     async with NODES_LOCK:
         snap = {nid: dict(n) for nid, n in NODES.items()}
     out = [_node_public(nid, n) for nid, n in snap.items()]
@@ -2903,7 +3279,7 @@ async def list_nodes(_=Depends(require_auth)):
 
 
 @app.post("/api/nodes/connect")
-async def connect_node(request: Request, _=Depends(require_auth)):
+async def connect_node(request: Request, _=Depends(require_admin)):
     body = await request.json()
     key = str(body.get("key") or "").strip()
     try:
@@ -2956,7 +3332,7 @@ async def connect_node(request: Request, _=Depends(require_auth)):
 
 
 @app.patch("/api/nodes/{node_id}")
-async def update_node(node_id: str, request: Request, _=Depends(require_auth)):
+async def update_node(node_id: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     async with NODES_LOCK:
         node = NODES.get(node_id)
@@ -2980,7 +3356,7 @@ async def update_node(node_id: str, request: Request, _=Depends(require_auth)):
 
 
 @app.delete("/api/nodes/{node_id}")
-async def disconnect_node(node_id: str, _=Depends(require_auth)):
+async def disconnect_node(node_id: str, _=Depends(require_admin)):
     async with NODES_LOCK:
         node = NODES.pop(node_id, None)
     if node is None:
@@ -3014,7 +3390,7 @@ async def _proxy_node_link_write(node_id: str, uid: str, method: str,
 
 
 @app.post("/api/nodes/{node_id}/subs")
-async def proxy_node_create_sub(node_id: str, request: Request, _=Depends(require_auth)):
+async def proxy_node_create_sub(node_id: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     async with NODES_LOCK:
         node = NODES.get(node_id)
@@ -3059,18 +3435,18 @@ async def _proxy_node_sub_write(node_id: str, sub_id: str, method: str,
 
 
 @app.patch("/api/nodes/{node_id}/subs/{sub_id}")
-async def proxy_node_update_sub(node_id: str, sub_id: str, request: Request, _=Depends(require_auth)):
+async def proxy_node_update_sub(node_id: str, sub_id: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     return await _proxy_node_sub_write(node_id, sub_id, "PATCH", json_body=body)
 
 
 @app.delete("/api/nodes/{node_id}/subs/{sub_id}")
-async def proxy_node_delete_sub(node_id: str, sub_id: str, _=Depends(require_auth)):
+async def proxy_node_delete_sub(node_id: str, sub_id: str, _=Depends(require_admin)):
     return await _proxy_node_sub_write(node_id, sub_id, "DELETE")
 
 
 @app.post("/api/nodes/{node_id}/subs/{sub_id}/links")
-async def proxy_node_assign_link_to_sub(node_id: str, sub_id: str, request: Request, _=Depends(require_auth)):
+async def proxy_node_assign_link_to_sub(node_id: str, sub_id: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     async with NODES_LOCK:
         node = NODES.get(node_id)
@@ -3093,7 +3469,7 @@ async def proxy_node_assign_link_to_sub(node_id: str, sub_id: str, request: Requ
 
 
 @app.post("/api/nodes/{node_id}/links")
-async def proxy_node_create_link(node_id: str, request: Request, _=Depends(require_auth)):
+async def proxy_node_create_link(node_id: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     async with NODES_LOCK:
         node = NODES.get(node_id)
@@ -3116,13 +3492,13 @@ async def proxy_node_create_link(node_id: str, request: Request, _=Depends(requi
 
 
 @app.patch("/api/nodes/{node_id}/links/{uid}")
-async def proxy_node_update_link(node_id: str, uid: str, request: Request, _=Depends(require_auth)):
+async def proxy_node_update_link(node_id: str, uid: str, request: Request, _=Depends(require_admin)):
     body = await request.json()
     return await _proxy_node_link_write(node_id, uid, "PATCH", json_body=body)
 
 
 @app.delete("/api/nodes/{node_id}/links/{uid}")
-async def proxy_node_delete_link(node_id: str, uid: str, _=Depends(require_auth)):
+async def proxy_node_delete_link(node_id: str, uid: str, _=Depends(require_admin)):
     return await _proxy_node_link_write(node_id, uid, "DELETE")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3234,7 +3610,7 @@ async def public_sub_data(uuid_key: str, request: Request):
     has_pw = sub.get("password_hash") is not None
     if has_pw:
         pw = request.query_params.get("pw", "")
-        if hash_password(pw) != sub["password_hash"]:
+        if not verify_password(pw, sub["password_hash"]):
             return JSONResponse({"locked": True, "name": sub["name"]})
 
     host = get_host()
@@ -3345,7 +3721,7 @@ from updater import (
 )
 
 @app.get("/api/version")
-async def api_version(_=Depends(require_auth)):
+async def api_version(_=Depends(require_admin)):
     current_info = get_current_version_info()
     latest_info = await get_latest_version_info()
     latest_ver = latest_info.get("version")
@@ -3359,15 +3735,15 @@ async def api_version(_=Depends(require_auth)):
     }
 
 @app.get("/api/update-history")
-async def api_update_history(_=Depends(require_auth)):
+async def api_update_history(_=Depends(require_admin)):
     return {"history": load_update_history()}
 
 @app.get("/api/update-log")
-async def api_update_log(_=Depends(require_auth)):
+async def api_update_log(_=Depends(require_admin)):
     return {"running": update_state["running"], "progress": update_state["progress"], "logs": list(update_log)[-100:]}
 
 @app.post("/api/update")
-async def api_update(_=Depends(require_auth)):
+async def api_update(_=Depends(require_admin)):
     if update_state["running"]:
         raise HTTPException(status_code=409, detail="بروزرسانی در حال اجراست")
     update_log.append({"time": time.time(), "msg": "درخواست بروزرسانی ثبت شد، در صف اجرا..."})
@@ -3409,14 +3785,36 @@ async def api_update(_=Depends(require_auth)):
     log_activity("system", "درخواست بروزرسانی پنل ثبت شد", "info")
     return {"ok": True, "started": True}
 
+# ── Settings: ثبت‌نام عمومی ──────────────────────────────────────────────────
+@app.get("/api/settings/signup")
+async def get_signup_setting(_=Depends(require_admin)):
+    return {"ok": True, "enabled": signup_enabled(), "env_default": ALLOW_SIGNUP}
+
+
+@app.post("/api/settings/signup")
+async def set_signup_setting(request: Request, _=Depends(require_admin)):
+    """روشن/خاموش‌کردن ثبت‌نام خودکار کاربران از صفحه‌ی ورود."""
+    body = await request.json()
+    enabled = bool(body.get("enabled"))
+    CONFIG["allow_signup"] = enabled
+    await save_state()
+    ident = current_identity() or {}
+    log_activity(
+        "auth",
+        f"ثبت‌نام عمومی {'روشن' if enabled else 'خاموش'} شد (توسط «{ident.get('username','?')}»)",
+        "warn",
+    )
+    return {"ok": True, "enabled": enabled}
+
+
 # ── Settings: توقف کامل لاگ‌گیری (برای بیشترین throughput ممکن) ─────────────────
 @app.get("/api/settings/logging")
-async def get_logging_setting(_=Depends(require_auth)):
+async def get_logging_setting(_=Depends(require_admin)):
     return {"disabled": bool(CONFIG.get("disable_logging"))}
 
 
 @app.post("/api/settings/logging")
-async def set_logging_setting(request: Request, _=Depends(require_auth)):
+async def set_logging_setting(request: Request, _=Depends(require_admin)):
     body = await request.json()
     disabled = bool(body.get("disabled"))
     CONFIG["disable_logging"] = disabled
@@ -3468,9 +3866,16 @@ async def login_page(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    if not await is_valid_session(request.cookies.get(SESSION_COOKIE)):
+    token = request.cookies.get(SESSION_COOKIE)
+    info = await get_session_info(token) if token else None
+    username = (info or {}).get("username")
+    user = USERS.get(username or "")
+    if not user or user.get("status") == "blocked":
+        await destroy_session(token)
         return RedirectResponse(url="/login")
-    await ensure_default_link()
+    # هویت را روی contextvar می‌نشینیم تا لینک پیش‌فرض، مالکِ همان اکانت باشد
+    CURRENT_USER.set({"username": username, "is_admin": bool(user.get("is_admin", False))})
+    await ensure_default_link(None if user.get("is_admin") else username)
     return HTMLResponse(content=DASHBOARD_HTML)
 
 @app.get("/test-ws", response_class=HTMLResponse)
