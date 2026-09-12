@@ -1,13 +1,13 @@
-# xhttp_core.py (trojan)
-# ══════════════════════════════════════════════════════════════════════════════
-# Trojan XHTTP Core — موتور اختصاصیِ session/quota/flow برای ترنسپورت XHTTP
-# روی Trojan. کاملاً مستقل از protocol/vless/xhttp_core.py (بدون فراخوانی
-# متقابل و بدون شاخه‌زدن is_trojan) تا هر پروتکل بتونه جدا بهینه/تیون بشه.
-#
-# تفاوت با VLESS: هدر Trojan نیازی به پیشوند \x00\x00 روی response نداره
-# (برخلاف VLESS که برای فریم اول downlink باید 2 بایت اضافه بشه)، و احراز
-# هویت هم بر اساس هش پسورد Trojan (نه UUID مستقیم توی هدر) انجام می‌شه.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import secrets
@@ -30,7 +30,7 @@ from main import (
 from protocol.vless.vless import check_and_use
 from protocol.trojan.trojan import parse_trojan_header, find_uuid_by_trojan_hash
 
-TROJAN_XHTTP_BUF = 1024 * 1024        # 1MB — هماهنگ با سایر پروتکل‌ها
+TROJAN_XHTTP_BUF = 1024 * 1024
 TROJAN_DOWNLINK_QUEUE_MAX = 512
 TROJAN_SESSION_IDLE_TIMEOUT = 30
 TROJAN_SESSION_IDLE_TIMEOUT_ACTIVE = 90
@@ -39,15 +39,15 @@ TROJAN_TCP_CONNECT_TIMEOUT = 10.0
 
 TROJAN_SOCK_BUF_SIZE = 4 * 1024 * 1024
 
-# ── AdaptiveFlow (AIMD) مخصوص Trojan-XHTTP ────────────────────────────────────
+
 TROJAN_FLOW_MIN_HW = 256 * 1024
 TROJAN_FLOW_MAX_HW = 32 * 1024 * 1024
-TROJAN_FLOW_START_HW = 2 * 1024 * 1024   # شروع متعادل (نه ۸MB، نه ۵۱۲KB)
-TROJAN_FLOW_FAST_DRAIN_MS = 12.0   # قبلاً 2.0 — خیلی سخت‌گیرانه بود، رو لینک ضعیف
-                                    # هیچ‌وقت شرط رشد برقرار نمی‌شد و بافر قفل می‌موند
-TROJAN_FLOW_SLOW_DRAIN_MS = 40.0   # قبلاً 25.0
+TROJAN_FLOW_START_HW = 2 * 1024 * 1024
+TROJAN_FLOW_FAST_DRAIN_MS = 12.0
 
-# ── QuotaGate تطبیقی مخصوص Trojan-XHTTP ───────────────────────────────────────
+TROJAN_FLOW_SLOW_DRAIN_MS = 40.0
+
+
 TROJAN_QUOTA_MIN_BATCH = 32 * 1024
 TROJAN_QUOTA_MAX_BATCH = 4 * 1024 * 1024
 TROJAN_QUOTA_START_BATCH = 256 * 1024
@@ -79,7 +79,7 @@ def _resp_headers(fp: str) -> dict:
 
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """TCP_NODELAY + بافرهای بزرگ‌تر سوکت مخصوص Trojan-XHTTP."""
+
     sock = writer.transport.get_extra_info("socket")
     if not sock:
         return
@@ -94,7 +94,7 @@ def _tune_socket(writer: asyncio.StreamWriter):
 
 
 class _TrojanQuotaGate:
-    """batch quota check تطبیقی (EWMA)، مستقل از موتور VLESS."""
+
     __slots__ = ("uuid", "pending", "last_check", "ok", "batch_bytes", "rate_ewma")
 
     def __init__(self, uuid: str):
@@ -139,7 +139,7 @@ class _TrojanQuotaGate:
 
 
 class _TrojanAdaptiveFlow:
-    """high-water تطبیقی برای drain()، مستقل از موتور VLESS."""
+
     __slots__ = ("high_water", "last_drain_ms")
 
     def __init__(self):
@@ -171,7 +171,7 @@ def _req_client_ip(request: Request) -> str:
 
 
 async def _open_tcp_from_trojan_header(first_chunk: bytes):
-    """هدر Trojan رو پارس، هش پسورد رو برای احراز هویت resolve و TCP مقصد رو باز می‌کنه."""
+
     pw_hash, command, address, port, payload = await parse_trojan_header(first_chunk)
     resolved_uuid = await find_uuid_by_trojan_hash(pw_hash)
     if resolved_uuid is None:
@@ -204,7 +204,7 @@ async def _check_link(uuid: str):
 
 
 async def _get_or_create_session(uuid: str, mode: str, session_id: str, ip: str = "نامشخص") -> dict:
-    """Session بر اساس session_id که خودِ کلاینت در URL می‌فرسته، lazily ساخته می‌شه."""
+
     async with TROJAN_XHTTP_LOCK:
         sess = trojan_xhttp_sessions.get(session_id)
         if sess is not None:
@@ -225,8 +225,8 @@ async def _get_or_create_session(uuid: str, mode: str, session_id: str, ip: str 
             "last_seen": time.time(),
             "conn_id": conn_id, "tcp_open": False, "closed": False,
             "seq_buf": {}, "next_seq": 0,
-            "gate": None,   # لازی: _TrojanQuotaGate مخصوص stream-up
-            "flow": None,   # لازی: _TrojanAdaptiveFlow مخصوص stream-up
+            "gate": None,
+            "flow": None,
         }
         trojan_xhttp_sessions[session_id] = sess
         logger.info(f"new Trojan-XHTTP[{mode}] session [{session_id[:8]}] uuid={uuid[:8]} ip={ip}")
@@ -294,7 +294,7 @@ def ensure_reaper():
 
 
 async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamReader, down_q: asyncio.Queue, conn_id: str = ""):
-    """Trojan نیازی به پیشوند \\x00\\x00 نداره — برخلاف VLESS، فریم اول دستکاری نمی‌شه."""
+
     gate = _TrojanQuotaGate(uuid)
     close_reason = "remote-eof"
     cached_conn = connections.get(conn_id) if conn_id else None

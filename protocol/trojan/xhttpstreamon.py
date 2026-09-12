@@ -1,9 +1,9 @@
-# xhttpstreamon.py (trojan)
-# ══════════════════════════════════════════════════════════════════════════════
-# Trojan XHTTP — دانلینک (GET پیوسته که داده‌های سرور مقصد رو به کلاینت stream
-# می‌کنه). منطق اصلی در xhttp_core.py (trojan) قرار داره؛ این فایل فقط route
-# رو تعریف می‌کنه، دقیقاً هم‌راستا با نسخه‌ی vless.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -21,7 +21,7 @@ from protocol.trojan.xhttp_core import (
 router = APIRouter()
 
 
-# ══════════════════════════════ STREAM-ONE (GET پیوسته‌ی دانلینک) ══════════════════════════════
+
 @router.get("/txhttp-siz10/{mode}/{uuid}/{session_id}")
 async def trojan_xhttp_downlink(mode: str, uuid: str, session_id: str, request: Request):
     ensure_reaper()

@@ -1,8 +1,8 @@
-# websocket.py
-# ══════════════════════════════════════════════════════════════════════════════
-# Trojan — اندپوینت WebSocket (/trojan-ws)
-# پارس هدر و QuotaGate در trojan.py (هسته‌ی مشترک) قرار دارند.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
 
 import asyncio
 import secrets
@@ -50,7 +50,7 @@ async def _relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id:
             if conn is not None:
                 conn["bytes"] += len(data)
             writer.write(data)
-            # drain فقط وقتی واقعاً بافر پر باشه، نه هر بار
+
             if writer.transport.get_write_buffer_size() > WRITE_HIGH_WATER:
                 await writer.drain()
     except (WebSocketDisconnect, Exception):
@@ -66,7 +66,7 @@ async def _relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id:
 async def _relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uuid: str):
     gate = _QuotaGate(uuid)
     conn = connections.get(conn_id)
-    # Trojan: بدون response prefix (برخلاف VLESS که \x00\x00 نیاز داره)
+
     try:
         while True:
             data = await reader.read(RELAY_BUF)
@@ -85,10 +85,7 @@ async def _relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id:
 
 
 async def trojan_ws_tunnel(ws: WebSocket):
-    """
-    اندپوینت وب‌سوکت Trojan.
-    پسورد داخل استریم اول فرستاده می‌شه، نه در URL.
-    """
+
     await ws.accept()
     ip = _ws_client_ip(ws)
     conn_id = secrets.token_urlsafe(6)

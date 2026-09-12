@@ -1,14 +1,14 @@
-# trojan.py
-# ══════════════════════════════════════════════════════════════════════════════
-# Trojan Relay — بهینه‌شده برای حداکثر throughput
-#  بهبودها نسبت به نسخه‌ی قبل:
-#   1. _TrojanHashCache: هش UUID‌ها رو cache می‌کنه → دیگه هر بار SHA224 محاسبه نمی‌شه
-#   2. RELAY_BUF: 256KB → 1MB (4× بیشتر)
-#   3. SO_SNDBUF / SO_RCVBUF بزرگ روی سوکت TCP
-#   4. _QuotaGate تطبیقی (از xhttp_siz10) به‌جای check_and_use به‌ازای هر chunk
-#   5. relay_ws_to_tcp: drain فقط وقتی بافر پر بشه، نه هر بار
-#   6. relay_tcp_to_ws: خواندن با read(RELAY_BUF) بدون await اضافه
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import hashlib
@@ -25,31 +25,26 @@ from main import (
 )
 from protocol.vless.vless import check_and_use
 
-RELAY_BUF = 1024 * 1024          # 1 MB — 4× نسبت به قبل
-SOCK_BUF = 4 * 1024 * 1024       # 4 MB بافر سوکت سطح OS
-WRITE_HIGH_WATER = 512 * 1024    # drain فقط وقتی بیشتر از 512KB در بافر باشه
+RELAY_BUF = 1024 * 1024
+SOCK_BUF = 4 * 1024 * 1024
+WRITE_HIGH_WATER = 512 * 1024
 TROJAN_HEADER_MIN = 56 + 2 + 1 + 1 + 1 + 2 + 2
 
-# تنظیمات QuotaGate تطبیقی
+
 QUOTA_MIN_BATCH = 32 * 1024
 QUOTA_MAX_BATCH = 2 * 1024 * 1024
 QUOTA_START_BATCH = 128 * 1024
 QUOTA_CHECK_INTERVAL = 0.25
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Hash Cache — جلوگیری از محاسبه‌ی تکراری SHA224
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 
 class _TrojanHashCache:
-    """
-    UUID → trojan_hash رو cache می‌کنه.
-    هر بار که LINKS تغییر کنه (UUID اضافه/حذف بشه) باید invalidate بشه.
-    از اونجا که LINKS یه dict ساده‌ست و تغییراتش نادره، ما فقط
-    snapshot اندازه رو نگه می‌داریم و اگه عوض شد rebuild می‌کنیم.
-    """
+
     def __init__(self):
-        self._cache: dict[str, str] = {}   # hash → uuid
+        self._cache: dict[str, str] = {}
         self._snapshot_len: int = -1
 
     def _rebuild(self, links_snapshot: dict):
@@ -69,9 +64,9 @@ class _TrojanHashCache:
 _hash_cache = _TrojanHashCache()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# QuotaGate تطبیقی — کمتر await، throughput بالاتر
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 
 class _QuotaGate:
     __slots__ = ("uuid", "pending", "last_check", "ok", "batch_bytes", "rate_ewma")
@@ -116,9 +111,9 @@ class _QuotaGate:
         return self.ok
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# توابع کمکی
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 
 def _ws_client_ip(ws: WebSocket) -> str:
     fwd = ws.headers.get("x-forwarded-for")
@@ -139,7 +134,7 @@ async def find_uuid_by_trojan_hash(pw_hash: str) -> str | None:
 
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """TCP_NODELAY + بافرهای بزرگ برای کاهش overhead سیستم‌عامل."""
+
     sock = writer.transport.get_extra_info("socket")
     if not sock:
         return
@@ -154,10 +149,7 @@ def _tune_socket(writer: asyncio.StreamWriter):
 
 
 async def parse_trojan_header(chunk: bytes):
-    """
-    فرمت Trojan:
-      56 bytes hex(SHA224(password)) + CRLF + CMD(1) + ATYP(1) + ADDR + PORT(2) + CRLF + payload
-    """
+
     if len(chunk) < TROJAN_HEADER_MIN:
         raise ValueError("chunk too small for trojan header")
 
@@ -201,5 +193,5 @@ async def _resolve_and_authorize(first_chunk: bytes):
     return uuid, address, port, payload, len(first_chunk)
 
 
-# اندپوینت trojan_ws_tunnel و توابع relay آن به protocol/trojan/websocket.py منتقل شدند.
-# _QuotaGate اینجا باقی می‌ماند چون هم توسط websocket.py و هم منطق‌های دیگر استفاده می‌شود.
+
+
