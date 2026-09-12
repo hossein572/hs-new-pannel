@@ -1,10 +1,10 @@
-# botgeneratedomin.py
-# ══════════════════════════════════════════════════════════════════════════════
-# تولید انبوه دامنه روی Railway — به جای پیدا کردن یک دامنه خاص،
-# N تا دامنه‌ی *متفاوت* می‌سازد (فرقی نمی‌کند اسم دامنه چه باشد، فقط یکتا باشد)
-# ══════════════════════════════════════════════════════════════════════════════
 
-import asyncio 
+
+
+
+
+
+import asyncio
 import os
 import time
 import logging
@@ -13,7 +13,7 @@ from typing import Optional
 
 import httpx
 
-import bottokentcpproxy as btp  # از توابع مشترک توکن/اتصال Railway استفاده می‌کنیم
+import bottokentcpproxy as btp
 
 logger = logging.getLogger("HS-Panel")
 
@@ -27,7 +27,7 @@ domain_gen_state = {
     "progress": 0,
     "attempts": 0,
     "target_count": DEFAULT_TARGET_COUNT,
-    "results": [],          # [{domain, port, application_port, id}]
+    "results": [],
     "error": None,
     "stopped_by_user": False,
 }

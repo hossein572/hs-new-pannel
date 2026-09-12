@@ -23,7 +23,7 @@ def _install_packages():
         print(f"[STARTUP] خطا در نصب پکیج‌ها:\n{e.stderr.decode()}", file=sys.stderr)
         sys.exit(1)
 
-# _install_packages()  # deps preinstalled for local test
+
 
 import asyncio
 import contextvars
@@ -65,32 +65,32 @@ logger = logging.getLogger("HS-Panel")
 try:
     IRAN_TZ = ZoneInfo("Asia/Tehran")
 except Exception:
-    # ویندوز دیتابیس timezone سیستمی ندارد؛ اگه پکیج tzdata نصب نباشد،
-    # از آفست ثابت ایران (+3:30) استفاده می‌شود تا سرور بالا بیاید.
+
+
     logger.warning("tzdata یافت نشد (pip install tzdata) — از آفست ثابت +3:30 برای تهران استفاده می‌شود")
     IRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 app = FastAPI(title="HS Panel", docs_url=None, redoc_url=None)
 
-# وقتی مستقیم با `python main.py` اجرا میشه، این ماژول با نام "__main__" ثبت
-# میشه نه "main". چون protocol/vless/vless.py و protocol/trojan/trojan.py با
-# `from main import (...)` به این فایل رفرنس می‌دن، بدون این خط پایتون مجبور
-# میشه کل main.py رو یک‌بار دیگه از صفر به‌عنوان ماژول جداگانه‌ی "main" اجرا کنه
-# که باعث circular import و کرش میشه. با alias کردن sys.modules، هر دو اسم
-# به همین نمونه‌ی در حال اجرا اشاره می‌کنن.
+
+
+
+
+
+
 sys.modules.setdefault("main", sys.modules[__name__])
 
-# ── .env ────────────────────────────────────────────────────────────────────
-# اگه فایل `.env` کنار main.py باشه، خودکار لود میشه تا لازم نباشه هر بار
-# متغیرها (مخصوصاً SMTP) رو دستی در ترمینال ست کنی. بدون نیاز به پکیج اضافه.
-# اولویت: متغیر محیطی واقعی > مقادیر .env (اگه چیزی در env ست شده، دست نمی‌خوره).
+
+
+
+
 def _load_dotenv() -> None:
     try:
         env_path = Path(__file__).parent / ".env"
         if not env_path.is_file():
             return
         loaded = 0
-        # utf-8-sig: اگه فایل با Notepad ویندوز ساخته شده باشه (BOM)، درست خوانده میشه
+
         for raw in env_path.read_text(encoding="utf-8-sig").splitlines():
             line = raw.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -120,16 +120,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Persistence ───────────────────────────────────────────────────────────────
+
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
-# اگه /data writable نیست (مثل محیط تست محلی)، از data/ محلی استفاده کن
+
 _test_write = DATA_DIR / ".write_test"
 try:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     _test_write.write_text("ok")
     _test_write.unlink()
 except Exception:
-    # Fallback: از پوشه‌ی data کنار main.py استفاده کن
+
     DATA_DIR = Path(__file__).parent / "data"
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     logger.warning(f"دایرکتوری /data writable نیست — از {DATA_DIR} استفاده می‌شود")
@@ -138,11 +138,11 @@ DATA_FILE = DATA_DIR / "hs_state.json"
 SECRET_FILE = DATA_DIR / ".hs_secret"
 SAVE_LOCK = asyncio.Lock()
 
-# Cloudflare IP های پایدار — برای مواقعی که DNS تحریم/فیلتر باشه، کلاینت بتونه
-# مستقیم با IP وصل بشه. Worker به هر IP‌ای از این لیست میتونه وصل بشه.
-# هر IP به یک کشور + شهر متصله
+
+
+
 CLOUDFLARE_IPS = [
-    # 🇺🇸 آمریکا (1)
+
     {"ip": "104.20.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "New York"},
     {"ip": "104.21.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Miami"},
     {"ip": "104.22.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Seattle"},
@@ -153,64 +153,64 @@ CLOUDFLARE_IPS = [
     {"ip": "104.17.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Los Angeles"},
     {"ip": "104.18.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "Chicago"},
     {"ip": "104.19.0.0", "country": "US", "country_name": "🇺🇸 United States", "city": "New Jersey"},
-    # 🇩🇪 آلمان
+
     {"ip": "172.65.0.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Frankfurt"},
     {"ip": "188.114.98.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Berlin"},
     {"ip": "197.234.246.0", "country": "DE", "country_name": "🇩🇪 Germany", "city": "Munich"},
-    # 🇫🇷 فرانسه
+
     {"ip": "104.27.0.0", "country": "FR", "country_name": "🇫🇷 France", "city": "Paris"},
     {"ip": "197.234.248.0", "country": "FR", "country_name": "🇫🇷 France", "city": "Marseille"},
-    # 🇬🇧 انگلیس
+
     {"ip": "104.26.0.0", "country": "GB", "country_name": "🇬🇧 United Kingdom", "city": "London"},
     {"ip": "190.93.244.0", "country": "GB", "country_name": "🇬🇧 United Kingdom", "city": "Manchester"},
-    # 🇳🇱 هلند
+
     {"ip": "172.64.0.0", "country": "NL", "country_name": "🇳🇱 Netherlands", "city": "Amsterdam"},
     {"ip": "197.234.250.0", "country": "NL", "country_name": "🇳🇱 Netherlands", "city": "Rotterdam"},
-    # 🇮🇹 ایتالیا
+
     {"ip": "172.67.0.0", "country": "IT", "country_name": "🇮🇹 Italy", "city": "Rome"},
     {"ip": "190.93.242.0", "country": "IT", "country_name": "🇮🇹 Italy", "city": "Milan"},
-    # 🇪🇸 اسپانیا
+
     {"ip": "172.66.0.0", "country": "ES", "country_name": "🇪🇸 Spain", "city": "Madrid"},
     {"ip": "190.93.243.0", "country": "ES", "country_name": "🇪🇸 Spain", "city": "Barcelona"},
-    # 🇸🇪 سوئد
+
     {"ip": "188.114.96.0", "country": "SE", "country_name": "🇸🇪 Sweden", "city": "Stockholm"},
     {"ip": "197.234.245.0", "country": "SE", "country_name": "🇸🇪 Sweden", "city": "Gothenburg"},
-    # 🇫🇮 فنلاند
+
     {"ip": "188.114.97.0", "country": "FI", "country_name": "🇫🇮 Finland", "city": "Helsinki"},
-    # 🇵🇱 لهستان
+
     {"ip": "188.114.99.0", "country": "PL", "country_name": "🇵🇱 Poland", "city": "Warsaw"},
-    # 🇨🇭 سوئیس
+
     {"ip": "190.93.247.0", "country": "CH", "country_name": "🇨🇭 Switzerland", "city": "Zurich"},
-    # 🇦🇹 اتریش
+
     {"ip": "197.234.251.0", "country": "AT", "country_name": "🇦🇹 Austria", "city": "Vienna"},
-    # 🇧🇪 بلژیک
+
     {"ip": "190.93.248.0", "country": "BE", "country_name": "🇧🇪 Belgium", "city": "Brussels"},
-    # 🇨🇿 چک
+
     {"ip": "190.93.249.0", "country": "CZ", "country_name": "🇨🇿 Czech Republic", "city": "Prague"},
-    # 🇩🇰 دانمارک
+
     {"ip": "190.93.245.0", "country": "DK", "country_name": "🇩🇰 Denmark", "city": "Copenhagen"},
-    # 🇳🇴 نروژ
+
     {"ip": "190.93.246.0", "country": "NO", "country_name": "🇳🇴 Norway", "city": "Oslo"},
-    # 🇮🇪 ایرلند
+
     {"ip": "197.234.247.0", "country": "IE", "country_name": "🇮🇪 Ireland", "city": "Dublin"},
-    # 🇵🇹 پرتغال
+
     {"ip": "197.234.249.0", "country": "PT", "country_name": "🇵🇹 Portugal", "city": "Lisbon"},
-    # 🇹🇷 ترکیه (آسیا-اروپا)
+
     {"ip": "190.93.241.0", "country": "TR", "country_name": "🇹🇷 Turkey", "city": "Istanbul"},
-    # 🇦🇪 امارات (آسیا)
+
     {"ip": "190.93.240.0", "country": "AE", "country_name": "🇦🇪 UAE", "city": "Dubai"},
-    # 🇯🇵 ژاپن (آسیا)
+
     {"ip": "162.158.0.0", "country": "JP", "country_name": "🇯🇵 Japan", "city": "Tokyo"},
     {"ip": "141.101.71.0", "country": "JP", "country_name": "🇯🇵 Japan", "city": "Osaka"},
-    # 🇸🇬 سنگاپور (آسیا)
+
     {"ip": "162.159.0.0", "country": "SG", "country_name": "🇸🇬 Singapore", "city": "Singapore"},
-    # 🇰🇷 کره جنوبی (آسیا)
+
     {"ip": "141.101.65.0", "country": "KR", "country_name": "🇰🇷 South Korea", "city": "Seoul"},
-    # 🇭🇰 هنگ کنگ (آسیا)
+
     {"ip": "141.101.64.0", "country": "HK", "country_name": "🇭🇰 Hong Kong", "city": "Hong Kong"},
-    # 🇮🇳 هند (آسیا)
+
     {"ip": "141.101.66.0", "country": "IN", "country_name": "🇮🇳 India", "city": "Mumbai"},
-    # بقیه برای backwards compat
+
     {"ip": "190.93.250.0", "country": "HU", "country_name": "🇭🇺 Hungary", "city": "Budapest"},
     {"ip": "190.93.251.0", "country": "AU", "country_name": "🇦🇺 Australia", "city": "Sydney"},
     {"ip": "190.93.252.0", "country": "AU", "country_name": "🇦🇺 Australia", "city": "Melbourne"},
@@ -262,10 +262,7 @@ CONFIG = {
 
 
 def apply_logging_state():
-    """logging.disable سطح‌بندی سراسریه (روی کل ماژول logging اثر می‌ذاره)، پس
-    یک‌جا همه‌ی logger های پروژه (HS-Panel، uvicorn.access، uvicorn.error،
-    mtproto و ...) رو خاموش/روشن می‌کنه. چک داخلیش خیلی ارزونه، پس این خودش
-    باعث می‌شه سربار I/O و فرمت‌کردن استرینگ لاگ‌ها کاملاً حذف بشه."""
+
     if CONFIG.get("disable_logging"):
         logging.disable(logging.CRITICAL)
     else:
@@ -273,10 +270,7 @@ def apply_logging_state():
 
 
 async def load_state():
-    """لود state. فرمت جدید (version 2) داده‌ی هر کاربر را جدا دارد؛ فرمت‌های
-    قدیمی (legacy) خودکار مهاجرت می‌شوند: کانفیگ‌ها/گروه‌ها/نودهای قدیمی به
-    حساب مالک (hossein) منتقل می‌شوند و کاربران قدیمی (که با ایمیل ثبت شده
-    بودند) به username تبدیل می‌شوند."""
+
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         logger.info(f"Loading state from: {DATA_DIR}")
@@ -285,7 +279,7 @@ async def load_state():
         loaded_from = "main"
 
         if not DATA_FILE.exists():
-            # اگه فایل اصلی نیست، از آخرین backup استفاده کن
+
             backup_dir = DATA_DIR / "backups"
             if backup_dir.exists():
                 backups = sorted(backup_dir.glob("hs_state-*.json"), reverse=True)
@@ -301,7 +295,7 @@ async def load_state():
             CONFIG["disable_logging"] = bool(data.get("disable_logging", False))
             apply_logging_state()
 
-            # ── کاربران (فرمت قدیمی: ایمیل؛ فرمت جدید: username) ──
+
             for key, u in (data.get("users") or {}).items():
                 if not isinstance(u, dict):
                     continue
@@ -317,7 +311,7 @@ async def load_state():
                     "last_login": u.get("last_login"),
                 }
 
-            # ── داده‌های legacy (بالای ریشه) → حساب مالک ──
+
             owner_bucket = _user_bucket(OWNER_USERNAME)
             for k in ("links", "subs", "node_keys"):
                 for kk, vv in (data.get(k) or {}).items():
@@ -327,7 +321,7 @@ async def load_state():
                 if nid not in owner_bucket["nodes"] and isinstance(n, dict):
                     owner_bucket["nodes"][nid] = _normalize_node(n)
 
-            # ── داده‌های فرمت جدید (به تفکیک کاربر) ──
+
             for uname, bucket in (data.get("data") or {}).items():
                 if not isinstance(bucket, dict):
                     continue
@@ -342,6 +336,9 @@ async def load_state():
                 for vid, v in (bucket.get("vps_servers") or {}).items():
                     if vid not in b["vps_servers"] and isinstance(v, dict):
                         b["vps_servers"][vid] = v
+                for skk, sv in (bucket.get("socks_configs") or {}).items():
+                    if skk not in b["socks_configs"] and isinstance(sv, dict):
+                        b["socks_configs"][skk] = sv
 
             total_links = sum(len(b["links"]) for b in USER_DATA.values())
             total_subs = sum(len(b["subs"]) for b in USER_DATA.values())
@@ -370,6 +367,7 @@ async def save_state():
                         "nodes": dict(b["nodes"]),
                         "node_keys": dict(b["node_keys"]),
                         "vps_servers": dict(b.get("vps_servers", {})),
+                        "socks_configs": dict(b.get("socks_configs", {})),
                     }
                     for uname, b in USER_DATA.items()
                 },
@@ -384,20 +382,20 @@ async def save_state():
             logger.warning(f"Could not save state: {e}")
 
 
-# ── Debounced save ─────────────────────────────────────────────────────────────
-# هر بار که یک کانکشن (trojan/vless/shadowsocks/xhttp) بسته میشه، schedule_save()
-# صدا زده میشه به‌جای save_state() مستقیم. اگه صدها کانکشن در ثانیه باز و بسته بشن
-# (که برای WebSocket-based transportها عادیه)، save_state() قبلی باعث میشد به همون
-# تعداد، کل state سریالایز و روی دیسک نوشته بشه و event loop تک‌هسته‌ای رو مسدود کنه.
-# اینجا چندین درخواست ذخیره‌سازی که در بازه‌ی SAVE_DEBOUNCE_SECONDS اتفاق بیفتن،
-# در یک نوشتن واحد روی دیسک ادغام میشن.
+
+
+
+
+
+
+
 SAVE_DEBOUNCE_SECONDS = 2.0
 _save_pending = False
 _save_dirty_again = False
 
 
 async def schedule_save():
-    """نسخه‌ی debounce شده‌ی save_state — برای صدا زدن مکرر و پرتعداد (هر بسته شدن کانکشن) امن است."""
+
     global _save_pending, _save_dirty_again
     if _save_pending:
         _save_dirty_again = True
@@ -413,7 +411,7 @@ async def schedule_save():
     finally:
         _save_pending = False
 
-# ── In-memory state ───────────────────────────────────────────────────────────
+
 connections: dict = {}
 stats = {
     "total_bytes": 0,
@@ -422,10 +420,7 @@ stats = {
     "start_time": time.time(),
 }
 class _ErrorLogDeque(deque):
-    """deque معمولی، با این تفاوت که وقتی توقف لاگ‌گیری فعال باشه append() هیچ کاری
-    نمی‌کنه. با این روش همه‌ی error_logs.append(...) های پخش‌شده توی پروژه
-    (websocket.py ها، xhttp_core.py ها و ...) بدون نیاز به تغییر خودشون از این
-    فلگ پیروی می‌کنن."""
+
     def append(self, item):
         if CONFIG.get("disable_logging"):
             return
@@ -433,32 +428,32 @@ class _ErrorLogDeque(deque):
 
 
 error_logs: deque = _ErrorLogDeque(maxlen=50)
-hourly_traffic: dict = defaultdict(int)   # ترافیک کل سرور (ساعتی)
+hourly_traffic: dict = defaultdict(int)
 http_client: httpx.AsyncClient | None = None
 
-# ══════════════════════════════════════════════════════════════════════════════
-# چندکاربره: هر کاربر (username) پنل کاملاً مستقل خودش رو داره
-# (کانفیگ‌ها / گروه‌ها / نودها / کلیدهای نود جدا از بقیه).
-# LINKS/SUBS/NODES/NODE_KEYS پایین «scoped view» هستند:
-#   - داخل درخواست لاگین‌کرده: روی داده‌ی همان کاربر عمل می‌کنند
-#     (کاربر فعلی با contextvar CUR_USER مشخص می‌شود).
-#   - بدون context کاربر (endpointهای عمومی، handlers پروتکل، taskهای
-#     استارتاپ): عملیات خواندن روی همه‌ی کاربران یکجا (unified view) کار می‌کند؛
-#     عملیات نوشتن context کاربر می‌خواهد.
-# موتیشن اشیای برگشتی (مثلاً LINKS[uid]["x"] = 1) همیشه روی داده‌ی واقعی
-# مالک اعمال می‌شود چون دیکت‌های مرجع برگردانده می‌شوند.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
 OWNER_USERNAME = str(os.environ.get("ADMIN_USERNAME", "hossein")).strip().lower() or "hossein"
 OWNER_PASSWORD = os.environ.get("ADMIN_PASSWORD", "hossein2022")
 
-USER_DATA: dict = {}      # username -> {"links": {}, "subs": {}, "nodes": {}, "node_keys": {}}
+USER_DATA: dict = {}
 CUR_USER: contextvars.ContextVar = contextvars.ContextVar("hs_current_user", default=None)
-USER_HOURLY: dict = {}    # username -> {"HH:00": bytes} (ترافیک ساعتی هر کاربر)
-USER_ACTIVITY: dict = {}  # username -> deque لاگ فعالیت‌ها (جدا برای هر کاربر)
+USER_HOURLY: dict = {}
+USER_ACTIVITY: dict = {}
 SYSTEM_ACTIVITY: deque = deque(maxlen=200)
-activity_logs = SYSTEM_ACTIVITY   # alias قدیمی — لاگ‌های سیستمی
+activity_logs = SYSTEM_ACTIVITY
 
-_BUCKET_KEYS = ("links", "subs", "nodes", "node_keys", "vps_servers")
+_BUCKET_KEYS = ("links", "subs", "nodes", "node_keys", "vps_servers", "socks_configs")
 
 def _user_bucket(username: str) -> dict:
     b = USER_DATA.get(username)
@@ -467,14 +462,14 @@ def _user_bucket(username: str) -> dict:
     return b
 
 def link_owner(uuid: str) -> str | None:
-    """مالک یک کانفیگ (برای لاگ‌ها و آمار ساعتی به تفکیک کاربر)."""
+
     for username, bucket in USER_DATA.items():
         if uuid in bucket["links"]:
             return username
     return None
 
 def bump_user_traffic(username: str | None, n: int) -> None:
-    """افزایش ترافیک ساعتی کاربر (per-user)."""
+
     if not username or not n:
         return
     d = USER_HOURLY.setdefault(username, {})
@@ -485,7 +480,7 @@ def bump_user_traffic(username: str | None, n: int) -> None:
             d.pop(k, None)
 
 class UserScopedDict:
-    """دیکتی که بسته به کاربر لاگین‌کرده (contextvar CUR_USER) رزولوشن می‌شود."""
+
 
     __slots__ = ("_key",)
 
@@ -501,7 +496,7 @@ class UserScopedDict:
     def _all(self):
         return [b[self._key] for b in USER_DATA.values()]
 
-    # ── خواندن ──
+
     def get(self, k, default=None):
         s = self._scope()
         if s is not None:
@@ -552,7 +547,7 @@ class UserScopedDict:
     def __bool__(self):
         return bool(self.keys())
 
-    # ── نوشتن (فقط با context کاربر) ──
+
     def _writable(self) -> dict:
         s = self._scope()
         if s is None:
@@ -585,18 +580,18 @@ LINKS_LOCK = asyncio.Lock()
 SUBS = UserScopedDict("subs")
 SUBS_LOCK = asyncio.Lock()
 
-# ── MTProto (mtproto_native / باینری رسمی تلگرام) — هر لینک = یک پروسه‌ی جدا،
-# روی پورت خودش، با ad_tag مستقل خودش (per-instance، دقیقاً مثل mtg قدیم) ──
 
-# ── Node linking (اتصال چند پنل به هم) — هر کاربر نودها و کلیدهای خودش ───────
-# NODE_KEYS: کلیدهایی که *این کاربر* صادر کرده. هر کلید به یک پنل دیگه اجازه میده
-#            دیتا رو بخونه و روی کانفیگ‌ها بنویسه (سمت inbound).
-# NODES:     پنل‌هایی که *این کاربر* بهشون وصل شده و دیتاشون رو ادغام می‌کنه (سمت outbound).
+
+
+
+
+
+
 NODE_KEYS = UserScopedDict("node_keys")
 NODE_KEYS_LOCK = asyncio.Lock()
 NODES = UserScopedDict("nodes")
 NODES_LOCK = asyncio.Lock()
-_NODE_CACHE: dict = {}          # node_id -> {"at": float, "data": dict}
+_NODE_CACHE: dict = {}
 NODE_CACHE_TTL = 8.0
 NODE_KEY_PREFIX = "hs-"
 NODE_KEY_HEADER = "X-HS-Node-Key"
@@ -610,9 +605,7 @@ PROTOCOLS = (
 DEFAULT_PROTOCOL = "vless-ws"
 
 def log_activity(kind: str, message: str, level: str = "info", username: str | None = None):
-    """ثبت فعالیت. اگه کاربر مشخص شده (یا context کاربر ست شده) لاگ توی صف
-    همان کاربر می‌ره؛ وگرنه (عملیات سیستمی) توی صف سیستمی — فقط ادمین‌ها
-    لاگ‌های سیستمی رو می‌بینند تا پنل هر کسی جدا بمونه."""
+
     if username is None:
         username = CUR_USER.get()
     entry = {
@@ -627,21 +620,21 @@ def log_activity(kind: str, message: str, level: str = "info", username: str | N
         SYSTEM_ACTIVITY.append(entry)
 
 
-# ── Auth (username + password — بدون ایمیل) ───────────────────────────────────
+
 SESSION_COOKIE = "hs_session"
 SESSION_TTL = 60 * 60 * 24 * 7
 
 def hash_password(pw: str) -> str:
     return hashlib.sha256(f"{pw}{CONFIG['secret']}".encode()).hexdigest()
 
-SESSIONS: dict = {}          # token -> {"username": str, "is_admin": bool, "exp": float}
+SESSIONS: dict = {}
 SESSIONS_LOCK = asyncio.Lock()
 
-# ── Multi-user (username + password) ──────────────────────────────────────────
-# USERS: username -> {"password_hash": str, "is_admin": bool, "created_at": str, ...}
-# ایمیل در هیچ بخشی از سیستم وجود ندارد — حساب‌ها فقط با username/password
-# ثبت و ورود می‌شوند و داده‌ی پنل هر کاربر (links/subs/nodes/keys)
-# کاملاً جدا از بقیه ذخیره و سرو می‌شود.
+
+
+
+
+
 USERS: dict = {}
 USERS_LOCK = asyncio.Lock()
 
@@ -651,11 +644,7 @@ def _normalize_username(raw) -> str:
     return str(raw or "").strip().lower()
 
 def seed_owner_user() -> None:
-    """مالک پنل (همان پنلی که به Cloudflare Worker وصل است) — اگر موجود نباشد
-    موقع استارتاپ ساخته می‌شود:
-      username = ADMIN_USERNAME env (پیش‌فرض: hossein)
-      password = ADMIN_PASSWORD env (پیش‌فرض: hossein2022)
-    تمام داده‌های قدیمی (legacy) هم به این حساب منتقل می‌شود."""
+
     if OWNER_USERNAME in USERS:
         return
     USERS[OWNER_USERNAME] = {
@@ -685,7 +674,7 @@ async def get_session_info(token: str | None) -> dict | None:
         if not sess:
             return None
         if isinstance(sess, (int, float)):
-            # سشن خیلی قدیمی (نسخه‌ی تک‌کاربره) — به عنوان مالک/ادمین
+
             if sess < time.time():
                 SESSIONS.pop(token, None)
                 return None
@@ -709,8 +698,7 @@ async def destroy_session(token: str | None):
         SESSIONS.pop(token, None)
 
 async def require_auth(request: Request) -> str:
-    """احراز هویت — نام کاربری لاگین‌کرده را برمی‌گرداند و context کاربر را
-    ست می‌کند (از این‌جا به بعد LINKS/SUBS/... روی داده‌ی همان کاربر عمل می‌کند)."""
+
     token = request.cookies.get(SESSION_COOKIE)
     info = await get_session_info(token)
     if not info:
@@ -728,7 +716,7 @@ async def require_admin(request: Request) -> dict:
     CUR_USER.set(info["username"])
     return info
 
-# ── Startup / Shutdown ────────────────────────────────────────────────────────
+
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(central.heartbeat_loop())
@@ -740,16 +728,16 @@ async def startup():
     )
     await load_state()
     seed_owner_user()
-    # مطمئن شو state فایل وجود داره (حتی اگه خالی باشه)
+
     await force_save_state()
-    # هر ۵ دقیقه یکبار state رو سیو کن (backup ایمنی)
+
     asyncio.create_task(_periodic_backup())
     await _restart_mtproto_instances()
     log_activity("system", "سرور راه‌اندازی شد", "ok")
     logger.info(f"HS Panel started on port {CONFIG['port']} — data dir: {DATA_DIR}")
 
 async def force_save_state():
-    """بدون debounce فوراً state رو ذخیره میکنه (برای backup ایمنی)"""
+
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         data = {
@@ -762,26 +750,27 @@ async def force_save_state():
                     "nodes": dict(b["nodes"]),
                     "node_keys": dict(b["node_keys"]),
                     "vps_servers": dict(b.get("vps_servers", {})),
+                    "socks_configs": dict(b.get("socks_configs", {})),
                 }
                 for uname, b in USER_DATA.items()
             },
             "disable_logging": CONFIG.get("disable_logging", False),
             "saved_at": datetime.now().isoformat(),
         }
-        # main state file — atomic write (tmp + replace) تا در صورت خرابی
-        # نوشتن، فایل قبلی سالم بماند (مخصوصاً با دو instance uvicorn)
+
+
         tmp_main = DATA_FILE.with_suffix(".json.tmp")
         with open(tmp_main, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         tmp_main.replace(DATA_FILE)
-        # backup copy با timestamp (اخرین ۳ نسخه)
+
         backup_dir = DATA_DIR / "backups"
         backup_dir.mkdir(exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_file = backup_dir / f"hs_state-{ts}.json"
         with open(backup_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        # فقط ۳ تا backup آخر رو نگه دار
+
         backups = sorted(backup_dir.glob("hs_state-*.json"))
         while len(backups) > 3:
             oldest = backups.pop(0)
@@ -792,14 +781,13 @@ async def force_save_state():
         logger.error(f"FORCE SAVE FAILED: {e}")
 
 async def _periodic_backup():
-    """هر ۵ دقیقه state رو ذخیره میکنه"""
+
     while True:
-        await asyncio.sleep(300)  # 5 minutes
+        await asyncio.sleep(300)
         await force_save_state()
 
 async def _restart_mtproto_instances():
-    """بعد از بالا اومدن پنل، به‌ازای هر لینک MTProto فعال یک پروسه‌ی جدای
-    mtproto_native (باینری رسمی تلگرام) روی پورت خودش بالا می‌آره."""
+
     async with LINKS_LOCK:
         targets = [
             (uid, d) for uid, d in LINKS.items()
@@ -838,8 +826,8 @@ async def _restart_mtproto_instances():
                 uid, inst["port"], d.get("mtproto_proxy_id"), d.get("label", "")
             ))
         elif not d.get("mtproto_proxy_id") and bottokentcpproxy.has_saved_token():
-            # لینکی که هنوز هیچ TCP Proxy عمومی نداره (مثلاً چون با نسخه‌ی قدیمی
-            # ساخته شده) — بدون این، لینکش مرده می‌مونه.
+
+
             asyncio.create_task(_attach_mtproto_public_proxy(
                 uid, inst["port"], d.get("label", "")
             ))
@@ -863,8 +851,7 @@ mtproto.set_usage_callback(_mtproto_usage_callback)
 
 
 async def _attach_mtproto_public_proxy(uid: str, application_port: int, label: str):
-    """TCP Proxy عمومی روی Railway برای پورت این instance خاص می‌سازه (هر لینک
-    پورت جدای خودش رو داره، پس هرکدوم TCP Proxy جدای خودش رو لازم داره)."""
+
     try:
         pub = await bottokentcpproxy.create_public_proxy_for_port(application_port)
     except Exception as exc:
@@ -888,10 +875,7 @@ async def _reattach_mtproto_public_proxy(uid: str, new_port: int, old_proxy_id: 
 
 
 async def _update_mtproto_ad_tag(uuid: str, ad_tag: str):
-    """پروسه‌ی این کاربر رو stop/start می‌کنه تا ad_tag جدید (که -P هست، سطح
-    process، نه runtime-API) اعمال بشه. force_port=True چون تازه stop شده و
-    پورت قدیمی باید آزاد باشه؛ اگه بازم آزاد نشد، پورت جدید می‌گیره و TCP Proxy
-    عمومی رو دوباره به پورت جدید وصل می‌کنیم."""
+
     try:
         async with LINKS_LOCK:
             link = LINKS.get(uuid)
@@ -970,9 +954,9 @@ async def shutdown():
     if http_client:
         await http_client.aclose()
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-# اولویت با PUBLIC_HOST env (Cloudflare Worker) هست، بعد RAILWAY_PUBLIC_DOMAIN
-# اگه هیچ‌کدوم نبود، از CONFIG["host"] استفاده میشه
+
+
+
 def get_host() -> str:
     return (
         os.environ.get("PUBLIC_HOST")
@@ -991,9 +975,9 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
     link = LINKS.get(uuid) or {}
     alpn = link.get("alpn", "h2")
     fp = link.get("fingerprint", "chrome")
-    # اگه کاربر یه IP static برای این لینک انتخاب کرده، از اون استفاده کن
+
     static_ip = link.get("static_ip")
-    # host (که در share link به عنوان address میره) = IP static اگه انتخاب شده
+
     address = static_ip if static_ip else host
     port = link.get("port", 443)
 
@@ -1001,10 +985,10 @@ def generate_share_link(uuid: str, host: str, remark: str = "HS", protocol: str 
         secret = link.get("mtproto_secret")
         if not secret:
             return f"tg://proxy?server={host}&port=0&secret=not_ready#{quote(remark)}"
-        # مهم: برای MTProto هیچ‌وقت به دامنه‌ی پنل fallback نمی‌کنیم. دامنه‌ی اصلی
-        # Railway فقط HTTP/443 رو سرو می‌کنه و پورت داخلی (مثلاً 8477) از بیرون
-        # اصلاً باز نیست — چنین لینکی کاملاً مرده‌ست (نه پینگ می‌ده نه وصل می‌شه).
-        # تنها آدرس معتبر، دامنه/پورتی هست که Railway موقع ساخت TCP Proxy می‌ده.
+
+
+
+
         pub_host = link.get("mtproto_public_host")
         pub_port = link.get("mtproto_public_port")
         if not pub_host or not pub_port:
@@ -1131,7 +1115,7 @@ def client_ip(request: Request) -> str:
         return real_ip.strip()
     return request.client.host if request.client else "نامشخص"
 
-# ── Node linking helpers ──────────────────────────────────────────────────────
+
 def _b64u_encode(s: str) -> str:
     return base64.urlsafe_b64encode(s.encode("utf-8")).decode().rstrip("=")
 
@@ -1142,12 +1126,12 @@ def _b64u_decode(s: str) -> str:
 
 
 def build_node_key(host: str, secret: str) -> str:
-    """کلید خودکفا: دامنه‌ی این پنل داخل خودِ کلید کدگذاری میشه."""
+
     return f"{NODE_KEY_PREFIX}{_b64u_encode(host)}.{secret}"
 
 
 def parse_node_key(key: str) -> tuple[str, str]:
-    """برمی‌گرداند (host, secret). در صورت نامعتبر بودن ValueError می‌دهد."""
+
     key = (key or "").strip()
     if not key.startswith(NODE_KEY_PREFIX):
         raise ValueError("کلید باید با hs- شروع شود")
@@ -1167,7 +1151,7 @@ def parse_node_key(key: str) -> tuple[str, str]:
 
 
 def _node_scheme(host: str) -> str:
-    # فقط برای تست محلی http مجاز است؛ در بقیه‌ی موارد اجباراً https
+
     return "http" if host.startswith(("localhost", "127.0.0.1")) else "https"
 
 
@@ -1188,7 +1172,7 @@ def _normalize_node(n: dict) -> dict:
 
 
 def _node_public(node_id: str, n: dict) -> dict:
-    """نسخه‌ی امن برای فرانت‌اند — کلید خام بیرون نمی‌رود."""
+
     out = {k: v for k, v in n.items() if k != "key"}
     out["node_id"] = node_id
     out["key_preview"] = (n.get("key") or "")[:14] + "…"
@@ -1211,7 +1195,7 @@ async def _node_request(node: dict, method: str, path: str, *,
 
 
 def node_key_owner(key_id: str) -> str | None:
-    """کاربری که این کلید نود را صادر کرده است."""
+
     for username, bucket in USER_DATA.items():
         if key_id in bucket["node_keys"]:
             return username
@@ -1219,9 +1203,7 @@ def node_key_owner(key_id: str) -> str | None:
 
 
 async def require_node_key(request: Request) -> str:
-    """احراز هویت پنل مقابل با هدر X-HS-Node-Key (بدون کوکی سشن).
-    context کاربر را روی *مالک کلید* ست می‌کند تا عملیات بعدی روی داده‌ی
-    همان پنل اعمال شود."""
+
     raw = (request.headers.get(NODE_KEY_HEADER) or "").strip()
     if not raw:
         raise HTTPException(status_code=401, detail="node key missing")
@@ -1248,12 +1230,11 @@ async def require_node_key(request: Request) -> str:
     asyncio.create_task(schedule_save())
     return matched
 
-# ── Default link (به‌تفکیک هر کاربر) ─────────────────────────────────────────
+
 _default_link_checked: set = set()
 
 async def ensure_default_link():
-    """اگه کاربر فعلی هنوز هیچ لینک پیش‌فرض ندارد، یکی برایش می‌سازد.
-    (هر کاربر پنل مستقل خودش را دارد، پس لینک پیش‌فرض هم per-user است.)"""
+
     username = CUR_USER.get()
     if not username or username in _default_link_checked:
         return
@@ -1277,7 +1258,7 @@ async def ensure_default_link():
                 }
                 asyncio.create_task(save_state())
 
-# ── Basic endpoints ───────────────────────────────────────────────────────────
+
 @app.get("/")
 async def root():
     return {"service": "HS Panel", "version": "1.0", "status": "active"}
@@ -1286,7 +1267,7 @@ async def root():
 async def health():
     return {"status": "ok", "connections": len(connections), "uptime": uptime()}
 
-# ── Subscription (single link) ────────────────────────────────────────────────
+
 @app.get("/sub/{uuid}")
 async def subscription_single(uuid: str):
     async with LINKS_LOCK:
@@ -1318,9 +1299,9 @@ async def subscription_all(_=Depends(require_auth)):
     headers = build_sub_headers("HS-All", total_used, total_limit, nearest_exp)
     return Response(content=content, media_type="text/plain", headers=headers)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SUB GROUP endpoints (بدون تغییر)
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 
 async def _create_sub_core(body: dict) -> dict:
     name = (body.get("name") or "گروه جدید").strip()[:60]
@@ -1463,7 +1444,7 @@ async def assign_link_to_sub(sub_id: str, request: Request, _=Depends(require_au
     asyncio.create_task(save_state())
     return {"ok": True}
 
-# ── مدیریت گروه از راه دور (توسط پنل مرکزی روی این نود) ──────────────────────
+
 @app.patch("/api/node/subs/{sub_id}")
 async def node_update_sub(sub_id: str, request: Request, key_id: str = Depends(require_node_key)):
     peer = await _require_node_manage(key_id)
@@ -1483,7 +1464,7 @@ async def node_assign_link_to_sub(sub_id: str, request: Request, key_id: str = D
     await _require_node_manage(key_id)
     return await assign_link_to_sub(sub_id, request, None)
 
-# ── Public sub-group subscription file ───────────────────────────────────────
+
 @app.get("/sub-group/{uuid_key}")
 async def sub_group_subscription(uuid_key: str, request: Request):
     async with SUBS_LOCK:
@@ -1551,9 +1532,9 @@ async def sub_group_subscription(uuid_key: str, request: Request):
     headers = build_sub_headers(f"پنل: {sub['name']}", total_used, total_limit, nearest_exp)
     return Response(content=content, media_type="text/plain", headers=headers)
 
-# ── Auth endpoints (username + password — بدون ایمیل) ────────────────────────
+
 async def _login_core(username: str, password: str):
-    """منطق مشترک ورود — ورود با نام کاربری و رمز عبور (تنها راه ورود به پنل)."""
+
     if not username or not password:
         raise HTTPException(status_code=400, detail="نام کاربری و رمز عبور الزامی است")
 
@@ -1584,8 +1565,7 @@ async def api_login(request: Request):
 
 @app.post("/api/auth/register")
 async def api_register(request: Request):
-    """ثبت‌نام حساب جدید با نام کاربری و رمز عبور — حساب در سیستم ثبت می‌شود
-    و پنل مستقل خودش را دارد."""
+
     body = await request.json()
     username = _normalize_username(body.get("username"))
     password = str(body.get("password") or "")
@@ -1598,7 +1578,7 @@ async def api_register(request: Request):
     async with USERS_LOCK:
         if username in USERS:
             raise HTTPException(status_code=409, detail="این نام کاربری قبلاً ثبت شده است. لطفاً وارد شوید.")
-        is_admin = len(USERS) == 0  # اولین حساب = مدیر
+        is_admin = len(USERS) == 0
         USERS[username] = {
             "password_hash": hash_password(password),
             "is_admin": is_admin,
@@ -1618,8 +1598,7 @@ async def api_register(request: Request):
 
 @app.post("/api/auth/login-password")
 async def api_login_password_compat(request: Request):
-    """سازگاری با فرمت قدیمی ({email, password}) — از بخش قبل از @ به‌عنوان
-    username استفاده می‌کند."""
+
     body = await request.json()
     username = body.get("username")
     if not username and body.get("email"):
@@ -1629,7 +1608,7 @@ async def api_login_password_compat(request: Request):
 
 @app.get("/api/auth/config")
 async def api_auth_config():
-    """وضعیت عمومی احراز هویت (برای صفحه‌ی لاگین — بدون نیاز به لاگین)."""
+
     return {"auth_mode": "username_password"}
 
 
@@ -1650,7 +1629,7 @@ async def api_me(request: Request):
 
 @app.post("/api/change-password")
 async def api_change_password(request: Request, username=Depends(require_auth)):
-    """تغییر رمز عبور (کاربر لاگین‌کرده)"""
+
     body = await request.json()
     current = str(body.get("current_password", ""))
     new = str(body.get("new_password", ""))
@@ -1669,7 +1648,7 @@ async def api_change_password(request: Request, username=Depends(require_auth)):
     log_activity("auth", f"کاربر «{username}» رمز عبورش را تغییر داد", "ok")
     return {"ok": True}
 
-# ── Backup / Restore ──────────────────────────────────────────────────────────
+
 @app.get("/api/backup/export")
 async def backup_export(username=Depends(require_auth)):
     async with LINKS_LOCK:
@@ -1680,7 +1659,7 @@ async def backup_export(username=Depends(require_auth)):
         node_keys_snap = dict(NODE_KEYS)
     async with NODES_LOCK:
         nodes_snap = dict(NODES)
-    # بکاپ همیشه به‌تفکیک کاربر است (فقط داده‌ی پنل خودتان)
+
     data = {
         "kind": "hs-panel-backup",
         "version": "2.0",
@@ -1715,7 +1694,7 @@ async def backup_import(request: Request, _=Depends(require_auth)):
     if not isinstance(new_links, dict) or not isinstance(new_subs, dict):
         raise HTTPException(status_code=400, detail="ساختار فایل بکاپ نامعتبر است")
 
-    # همه‌ی instance‌های MTProto رو قبل از جایگزینی داده‌ها متوقف کن
+
     try:
         await mtproto.stop_all()
     except Exception as exc:
@@ -1728,7 +1707,7 @@ async def backup_import(request: Request, _=Depends(require_auth)):
         SUBS.clear()
         SUBS.update(new_subs)
 
-    # نودها و کلیدهای نود اختیاری‌اند (بکاپ‌های قدیمی این کلیدها را ندارند)
+
     new_node_keys = data.get("node_keys")
     if isinstance(new_node_keys, dict):
         async with NODE_KEYS_LOCK:
@@ -1752,12 +1731,12 @@ async def backup_import(request: Request, _=Depends(require_auth)):
 
     log_activity("system", "بکاپ با موفقیت روی پنل بازیابی شد", "ok")
     return {"ok": True, "links_count": len(LINKS), "subs_count": len(SUBS), "nodes_count": len(NODES)}
-    
 
-# ── Stats ─────────────────────────────────────────────────────────────────────
+
+
 @app.get("/stats")
 async def get_stats(username=Depends(require_auth)):
-    """آمار پنل — به تفکیک کاربر (کانفیگ‌ها/گروه‌ها/ترافیک/اتصالات همین پنل)."""
+
     async with LINKS_LOCK:
         snap = dict(LINKS)
     my_uuids = set(snap)
@@ -1776,6 +1755,8 @@ async def get_stats(username=Depends(require_auth)):
         "active_links": sum(1 for l in snap.values() if is_link_allowed(l)),
         "expired_links": sum(1 for l in snap.values() if is_link_expired(l)),
         "subs_count": len(dict(SUBS)),
+        "vps_count": len(_get_user_vps(username)),
+        "socks_count": len(_get_user_socks(username)),
     }
 
 @app.get("/api/bot-tcp-proxy/domains")
@@ -1786,8 +1767,8 @@ async def api_bot_tcp_proxy_domains(_=Depends(require_auth)):
 async def api_bot_tcp_proxy_start(request: Request, _=Depends(require_auth)):
     body = await request.json()
     token = str(body.get("token", "")).strip()
-    # هر لینک MTProto پورت جدای خودش رو داره (per-instance)، پس پورت باید
-    # از ورودی کاربر/فرانت (لینکی که TCP Proxy براش ساخته می‌شه) بیاد.
+
+
     uid = str(body.get("uuid") or "").strip()
     port = body.get("port")
     if port is None and uid:
@@ -1807,10 +1788,7 @@ async def api_bot_tcp_proxy_start(request: Request, _=Depends(require_auth)):
 
 @app.post("/api/mtproto/fix-proxy")
 async def api_mtproto_fix_proxy(request: Request, _=Depends(require_auth)):
-    """راه مستقیم برای درست‌کردن لینک‌های MTProto بدون TCP Proxy:
-    توکن Railway رو (اگه فرستاده بشه) ذخیره می‌کنه و بعد برای همه‌ی لینک‌های
-    MTProto که هنوز TCP Proxy عمومی ندارن، یکی می‌سازه — بدون نیاز به طی‌کردن
-    کل فرآیند جست‌وجوی دامنه."""
+
     body = {}
     try:
         body = await request.json()
@@ -1859,10 +1837,7 @@ async def api_mtproto_fix_proxy(request: Request, _=Depends(require_auth)):
 
 @app.get("/api/mtproto/{uid}/stats")
 async def api_mtproto_stats(uid: str, _=Depends(require_auth)):
-    """آمار خام خود باینری mtproto-proxy برای این لینک.
-    اگه total_special_connections صفر بمونه حتی بعد از تلاش برای اتصال، یعنی
-    هیچ پکتی به پروسه نمی‌رسه (مشکل مسیر شبکه/TCP Proxy). اگه بالا بره ولی
-    اتصال برقرار نشه، یعنی پکت می‌رسه و مشکل در handshake/سکرت است."""
+
     async with LINKS_LOCK:
         if uid not in LINKS:
             raise HTTPException(status_code=404, detail="link not found")
@@ -1871,14 +1846,14 @@ async def api_mtproto_stats(uid: str, _=Depends(require_auth)):
 
 @app.post("/api/zeus-proxy/create")
 async def api_zeus_proxy_create(request: Request, _=Depends(require_auth)):
-    """ساخت پروکسی Zeus با پشتیبانی از محدودیت حجم، انقضا و اتصال per IP."""
+
     body = {}
     try:
         body = await request.json()
     except Exception:
         pass
     token = str(body.get("token", "")).strip()
-    # ── کانفیگ‌های اختیاری ──
+
     traffic_limit_gb = body.get("traffic_limit_gb")
     expires_days = body.get("expires_days")
     max_connections_per_ip = body.get("max_connections_per_ip")
@@ -1908,7 +1883,7 @@ async def api_zeus_proxy_delete(_=Depends(require_auth)):
 
 @app.post("/api/zeus-proxy/config")
 async def api_zeus_proxy_config(request: Request, _=Depends(require_auth)):
-    """تغییر کانفیگ‌های پروکسی Zeus (حجم/انقضا/اتصال per IP) بدون ری‌استارت."""
+
     body = {}
     try:
         body = await request.json()
@@ -1937,9 +1912,7 @@ async def api_bot_tcp_proxy_status(_=Depends(require_auth)):
 
 @app.post("/api/bot-tcp-proxy/attach")
 async def api_bot_tcp_proxy_attach(request: Request, _=Depends(require_auth)):
-    """وقتی جست‌وجو یک دامنه‌ی سالم پیدا کرد (phase=='done')، این دامنه/پورت به‌عنوان
-    TCP Proxy عمومیِ همون لینک MTProto مشخص‌شده (با uuid) ثبت می‌شود. اگر uuid
-    داده نشده باشه و هیچ لینک MTProtoای وجود نداشته باشه، یکی پیش‌فرض ساخته می‌شود."""
+
     status = bottokentcpproxy.get_status()
     chosen = status.get("result")
     if status.get("phase") != "done" or not chosen:
@@ -2038,11 +2011,10 @@ async def api_domain_gen_stop(_=Depends(require_auth)):
 async def api_domain_gen_status(_=Depends(require_auth)):
     return botgeneratedomin.get_status()
 
-# ── Activity Logs ─────────────────────────────────────────────────────────────
+
 @app.get("/api/activity")
 async def get_activity(username=Depends(require_auth)):
-    """لاگ فعالیت پنل — هر کاربر فقط فعالیت‌های پنل خودش را می‌بیند.
-    ادمین‌ها علاوه بر آن، لاگ‌های سیستمی (استارتاپ، بروزرسانی و ...) را هم می‌بینند."""
+
     entries = list(USER_ACTIVITY.get(username, ()))
     user = USERS.get(username)
     if user and user.get("is_admin"):
@@ -2050,16 +2022,16 @@ async def get_activity(username=Depends(require_auth)):
     entries.sort(key=lambda e: e.get("time") or "", reverse=True)
     return {"logs": entries[-150:]}
 
-# ── Live connections (with IP) ────────────────────────────────────────────────
+
 @app.get("/api/connections")
 async def get_connections(username=Depends(require_auth)):
-    """اتصالات زنده — فقط کانفیگ‌های پنل همین کاربر."""
+
     async with LINKS_LOCK:
         snap = dict(LINKS)
     grouped: dict[str, dict] = {}
     for conn_id, c in connections.items():
         if c.get("uuid") not in snap:
-            continue  # اتصال متعلق به پنل کاربر دیگری است
+            continue
         ip = c.get("ip", "نامشخص")
         link = snap.get(c.get("uuid"))
         label = link.get("label") if link else "نامشخص"
@@ -2121,7 +2093,7 @@ async def get_connections(username=Depends(require_auth)):
         "raw_count": sum(1 for c in connections.values() if c.get("uuid") in snap),
     }
 
-# ── Link Management ───────────────────────────────────────────────────────────
+
 async def _create_link_core(body: dict) -> dict:
     label = (body.get("label") or "لینک جدید").strip()[:60]
     lv = float(body.get("limit_value") or 0)
@@ -2140,10 +2112,10 @@ async def _create_link_core(body: dict) -> dict:
     if fp_val not in ("chrome", "firefox", "ios"):
         fp_val = "chrome"
 
-    # کشور و IP static برای این لینک
+
     country = (body.get("country") or "auto").strip()[:40]
     static_ip = (body.get("static_ip") or "").strip()[:45]
-    # اگه static_ip انتخاب شده ولی تو لیست ما نیست، نادیده بگیر
+
     if static_ip:
         valid_ips = {e["ip"] for e in CLOUDFLARE_IPS}
         if static_ip not in valid_ips:
@@ -2207,10 +2179,10 @@ async def _create_link_core(body: dict) -> dict:
         link_data["mtproto_domain"] = inst["domain"]
         link_data["mtproto_manual_port"] = manual_port is not None
 
-        # ── آدرس عمومی دستی ──────────────────────────────────────────────────
-        # اگه کاربر TCP Proxy رو خودش از داشبورد Railway ساخته باشه، دامنه و پورت
-        # عمومیش رو مستقیم اینجا وارد می‌کنه (مثل proxy.rlwy.net:12345). در این
-        # حالت اصلاً سراغ ساخت خودکار/توکن نمی‌ریم.
+
+
+
+
         pub_host = (body.get("mtproto_public_host") or "").strip()
         raw_pub_port = body.get("mtproto_public_port")
         try:
@@ -2225,9 +2197,9 @@ async def _create_link_core(body: dict) -> dict:
             link_data["mtproto_public_pending"] = True
             asyncio.create_task(_attach_mtproto_public_proxy(uid, inst["port"], label))
         else:
-            # بدون توکن Railway هیچ TCP Proxy عمومی ساخته نمی‌شه، یعنی این لینک
-            # از بیرون اصلاً قابل دسترس نیست. قبلاً این حالت بی‌صدا رد می‌شد و
-            # کاربر یه لینک ظاهراً سالم ولی کاملاً مرده می‌گرفت.
+
+
+
             link_data["mtproto_public_pending"] = False
             logger.error(
                 f"MTProto[{uid[:8]}]: توکن Railway ذخیره نشده — TCP Proxy عمومی ساخته نشد "
@@ -2246,7 +2218,7 @@ async def _create_link_core(body: dict) -> dict:
             ss_cipher = DEFAULT_CIPHER
         link_data["ss_cipher"] = ss_cipher
         link_data["ss_password"] = secrets.token_urlsafe(16)
-    
+
     async with LINKS_LOCK:
         LINKS[uid] = link_data
 
@@ -2277,7 +2249,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
 async def node_create_link(request: Request, key_id: str = Depends(require_node_key)):
     await _require_node_manage(key_id)
     body = await request.json()
-    # sub_id در اینجا به گروهِ محلیِ همین نود اشاره دارد (نه پنل مرکزی)؛ اگر معتبر نباشد نادیده گرفته می‌شود
+
     return await _create_link_core(body)
 
 @app.get("/api/links")
@@ -2290,7 +2262,7 @@ async def list_links(_=Depends(require_auth)):
         proto = d.get("protocol", DEFAULT_PROTOCOL)
         extra = {}
         if proto == "mtproto":
-            # هر لینک MTProto حالا instance/پورت/TCP-Proxy مستقل خودش رو داره
+
             extra = {
                 "mtproto_public_host": d.get("mtproto_public_host"),
                 "mtproto_public_port": d.get("mtproto_public_port"),
@@ -2313,12 +2285,12 @@ async def list_links(_=Depends(require_auth)):
     return {"links": result}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# API: لیست IP های static (Cloudflare) — برای مواقع فیلتر DNS
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 @app.get("/api/cloudflare-ips")
 async def api_cloudflare_ips(_=Depends(require_auth)):
-    # گروه‌بندی بر اساس کشور
+
     by_country = {}
     for entry in CLOUDFLARE_IPS:
         c = entry["country"]
@@ -2336,9 +2308,7 @@ async def api_cloudflare_ips(_=Depends(require_auth)):
 
 @app.get("/api/cloudflare-ips/speedtest")
 async def api_cloudflare_speedtest(country: str = None, _=Depends(require_auth)):
-    """
-    همه IP های یک کشور (یا همه) رو تست میکنه و سریع‌ترین رو برمیگردونه.
-    """
+
     import socket
     import time as _time
     ips_to_test = [e["ip"] for e in CLOUDFLARE_IPS if not country or e["country"] == country]
@@ -2346,7 +2316,7 @@ async def api_cloudflare_speedtest(country: str = None, _=Depends(require_auth))
         return {"error": "no ips found", "results": []}
 
     results = []
-    # فقط 8 تای اول رو تست کن (سرعت)
+
     for ip in ips_to_test[:8]:
         try:
             t0 = _time.time()
@@ -2357,91 +2327,18 @@ async def api_cloudflare_speedtest(country: str = None, _=Depends(require_auth))
         except Exception as e:
             results.append({"ip": ip, "ok": False, "error": str(e)[:50]})
 
-    # sort by ms
+
     results.sort(key=lambda x: (not x.get("ok", False), x.get("ms", 99999)))
     fastest = next((r["ip"] for r in results if r.get("ok")), None)
     return {"fastest": fastest, "results": results}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# API: تست/پینگ کانفیگ — بررسی اتصال واقعی به endpoint
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 @app.get("/api/links/{uid}/test")
 async def test_link(uid: str, _=Depends(require_auth)):
-    """
-    یه درخواست واقعی به endpoint کانفیگ میفرسته و زمان پاسخ + وضعیت TLS
-    رو برمیگردونه. مثل ping اپ‌های VPN.
-    """
-    import time
-    import socket
-    import ssl
-    from urllib.parse import urlparse
-
-    async with LINKS_LOCK:
-        link = LINKS.get(uid)
-
-    if not link:
-        return {"ok": False, "error": "config not found"}
-
-    if not is_link_allowed(link):
-        return {"ok": False, "error": "config disabled or quota exceeded"}
-
-    host = get_host()
-    protocol = link.get("protocol", DEFAULT_PROTOCOL)
-
-    result = {
-        "ok": False,
-        "uuid": uid,
-        "label": link.get("label", ""),
-        "protocol": protocol,
-        "host": host,
-        "tests": [],
-    }
-
-    # تست ۱: DNS resolve
-    t0 = time.time()
-    try:
-        ip = socket.gethostbyname(host)
-        dns_ms = int((time.time() - t0) * 1000)
-        result["tests"].append({"name": "DNS resolve", "ok": True, "ms": dns_ms, "detail": f"{host} → {ip}"})
-    except Exception as e:
-        result["tests"].append({"name": "DNS resolve", "ok": False, "error": str(e)})
-        return result
-
-    # تست ۲: TCP connect به 443
-    t0 = time.time()
-    try:
-        sock = socket.create_connection((host, 443), timeout=5)
-        tcp_ms = int((time.time() - t0) * 1000)
-        sock.close()
-        result["tests"].append({"name": "TCP connect (:443)", "ok": True, "ms": tcp_ms})
-    except Exception as e:
-        result["tests"].append({"name": "TCP connect (:443)", "ok": False, "error": str(e)})
-        return result
-
-    # تست ۳: TLS handshake
-    t0 = time.time()
-    try:
-        ctx = ssl.create_default_context()
-        with socket.create_connection((host, 443), timeout=5) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
-                tls_ms = int((time.time() - t0) * 1000)
-                cert = ssock.getpeercert()
-                tls_ver = ssock.version()
-        result["tests"].append({"name": "TLS handshake", "ok": True, "ms": tls_ms, "detail": f"{tls_ver} · cert={cert.get('subject', [[('CN', '?')]])[0][0][1] if cert else '?'}"})
-    except Exception as e:
-        result["tests"].append({"name": "TLS handshake", "ok": False, "error": str(e)})
-        return result
-
-    # تست ۴: HTTP probe — حذف شد چون روی Worker Cloudflare معمولاً کار نمیکنه
-    # (Worker فقط درخواست‌هایی که از V2RayNG میاد رو relay میکنه)
-    # به جای اون فقط TCP و TLS کافیه — چون V2RayNG خودش هنگام اتصال handshake میکنه
-    result["ok"] = True  # اگه TCP و TLS اوکی شد، یعنی سرور سالمه
-
-    # محاسبه latency کل
-    total_ms = sum(t.get("ms", 0) for t in result["tests"] if t.get("ms"))
-    result["total_ms"] = total_ms
-    return result
+    return await _test_link_async(uid)
 
 @app.patch("/api/links/{uid}")
 async def update_link(uid: str, request: Request, _=Depends(require_auth)):
@@ -2466,9 +2363,9 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
 
         if "label" in body:
             link["label"] = str(body["label"])[:60]
-        # ── ویرایش دستی آدرس عمومی MTProto ────────────────────────────────────
-        # برای وقتی که TCP Proxy رو خودت از داشبورد Railway ساختی و می‌خوای
-        # دامنه/پورت عمومیش رو روی یک لینک موجود ست کنی، بدون ساخت دوباره.
+
+
+
         if "mtproto_public_host" in body:
             ph = (body.get("mtproto_public_host") or "").strip()
             link["mtproto_public_host"] = ph or None
@@ -2576,8 +2473,8 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
 
     asyncio.create_task(save_state())
     return {"ok": True}
-    
-# ===== Endpoint جدید برای به‌روزرسانی ad_tag =====
+
+
 @app.patch("/api/links/{uid}/ad-tag")
 async def update_ad_tag(uid: str, request: Request, _=Depends(require_auth)):
     body = await request.json()
@@ -2591,14 +2488,14 @@ async def update_ad_tag(uid: str, request: Request, _=Depends(require_auth)):
         link = LINKS[uid]
         if link.get("protocol") != "mtproto":
             raise HTTPException(status_code=400, detail="این کانفیگ MTProto نیست")
-        link["ad_tag_status"] = "pending"   # ← جدید
+        link["ad_tag_status"] = "pending"
 
     asyncio.create_task(_update_mtproto_ad_tag(uid, ad_tag))
     log_activity("link", f"درخواست به‌روزرسانی ad_tag برای «{link.get('label','')}» ثبت شد", "info")
     return {"ok": True, "message": "ad_tag در حال اعمال است، پروکسی ری‌استارت می‌شود"}
 
 
-# اندپوینت جدید برای پول کردن وضعیت
+
 @app.get("/api/links/{uid}/ad-tag/status")
 async def get_ad_tag_status(uid: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
@@ -2635,10 +2532,10 @@ async def delete_link(uid: str, _=Depends(require_auth)):
     log_activity("link", f"کانفیگ «{label}» حذف شد", "err")
     return {"ok": True, "deleted": uid}
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Node linking — inbound (این پنل صادرکننده‌ی کلید است)
-# احراز هویت این بخش با هدر X-HS-Node-Key انجام می‌شود، نه کوکی سشن.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
 def _parse_parts(raw: str | None) -> set[str]:
     if not raw:
         return set()
@@ -2685,7 +2582,7 @@ async def node_handshake(request: Request, key_id: str = Depends(require_node_ke
 
 @app.get("/api/node/snapshot")
 async def node_snapshot(request: Request, _key_id: str = Depends(require_node_key)):
-    """فقط بخش‌هایی که هم درخواست شده و هم برای این کلید مجاز است برگردانده می‌شود."""
+
     parts = _parse_parts(request.query_params.get("parts"))
     async with NODE_KEYS_LOCK:
         entry = NODE_KEYS.get(_key_id) or {}
@@ -2743,9 +2640,9 @@ async def node_delete_link(uid: str, key_id: str = Depends(require_node_key)):
     log_activity("node", f"کانفیگ {uid[:8]} از راه دور توسط «{peer}» حذف شد", "err")
     return result
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Node linking — outbound (این پنل به نودهای دیگر وصل می‌شود)
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 @app.get("/api/nodes/keys")
 async def list_node_keys(_=Depends(require_auth)):
     host = get_host()
@@ -2771,7 +2668,7 @@ async def list_node_keys(_=Depends(require_auth)):
 
 
 def _node_key_share(body_share) -> dict:
-    """دسترسی‌های خواندن هر کلید؛ پیش‌فرض مثل خروجی نود: همه فعال جز لاگ‌ها."""
+
     src = body_share if isinstance(body_share, dict) else {}
     return {p: bool(src.get(p, p != "logs")) for p in NODE_SHARE_PARTS}
 
@@ -2921,7 +2818,7 @@ async def nodes_aggregate(request: Request, _=Depends(require_auth)):
 
 
 async def _fetch_node_snapshot(node_id: str, node: dict, *, fresh: bool = False) -> dict:
-    """اسنپ‌شات یک نود را با کش کوتاه‌مدت می‌گیرد. فقط بخش‌های تیک‌خورده منتقل می‌شوند."""
+
     share = node.get("share") or {}
     parts = sorted(p for p in NODE_SHARE_PARTS if share.get(p))
     cache_key = f"{node_id}|{','.join(parts)}"
@@ -3197,16 +3094,368 @@ async def proxy_node_update_link(node_id: str, uid: str, request: Request, _=Dep
 async def proxy_node_delete_link(node_id: str, uid: str, _=Depends(require_auth)):
     return await _proxy_node_link_write(node_id, uid, "DELETE")
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VPS Servers Management (persistent, per-user, protected from deletion)
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+XRAY_DNS_BLOCK = {
+    "servers": ["1.1.1.1"],
+    "hosts": {
+        "domain:googleapis.cn": "googleapis.com",
+        "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1", "2400:3200:baba::1"],
+        "one.one.one.one": ["1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001"],
+        "dot.pub": ["1.12.12.12", "120.53.53.53"],
+        "dns.google": ["8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844"],
+        "dns.quad9.net": ["9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9"],
+        "common.dot.dns.yandex.net": ["77.88.8.8", "77.88.8.1", "2a02:6b8::feed:0ff", "2a02:6b8:0:1::feed:0ff"],
+    },
+    "queryStrategy": "UseIPv4",
+}
+
+XRAY_ROUTING_BLOCK = {
+    "domainStrategy": "AsIs",
+    "rules": [
+        {"type": "field", "ip": ["1.1.1.1"], "outboundTag": "proxy", "port": "53"},
+        {"type": "field", "ip": ["223.5.5.5"], "outboundTag": "direct", "port": "53"},
+    ],
+}
+
+def _xray_mux() -> dict:
+    return {"enabled": False, "concurrency": -1, "xudpConcurrency": 8, "xudpProxyUDP443": ""}
+
+def _xray_direct() -> dict:
+    return {
+        "tag": "direct",
+        "protocol": "freedom",
+        "settings": {"domainStrategy": "UseIP"},
+        "mux": {"enabled": False, "concurrency": 8, "xudpConcurrency": 8, "xudpProxyUDP443": ""},
+    }
+
+def _xray_block() -> dict:
+    return {
+        "tag": "block",
+        "protocol": "blackhole",
+        "settings": {"response": {"type": "http"}},
+        "mux": {"enabled": False, "concurrency": 8, "xudpConcurrency": 8, "xudpProxyUDP443": ""},
+    }
+
+def _xray_socks_inbound(port: int, listen: str) -> dict:
+    return {
+        "tag": "socks",
+        "port": port,
+        "protocol": "socks",
+        "listen": listen,
+        "settings": {"auth": "noauth", "udp": True, "userLevel": 8},
+        "sniffing": {"enabled": True, "destOverride": ["http", "tls", "quic"], "routeOnly": False},
+    }
+
+def _parse_proxy_link(url: str) -> dict:
+    from urllib.parse import urlparse, parse_qs, unquote
+    url = (url or "").strip()
+    if "://" not in url:
+        return {}
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    remark = unquote(parsed.fragment or "")
+    auth = unquote(parsed.username or "")
+    host = parsed.hostname or ""
+    try:
+        port = parsed.port or 443
+    except (TypeError, ValueError):
+        port = 443
+    q = {k: v[0] for k, v in parse_qs(parsed.query, keep_blank_values=True).items()}
+    if scheme == "vless":
+        return {
+            "protocol": "vless",
+            "id": auth,
+            "address": host,
+            "port": port,
+            "remark": remark,
+            "network": q.get("type", "ws"),
+            "mode": q.get("mode", "packet-up"),
+            "security": q.get("security", "tls"),
+            "path": q.get("path", "/"),
+            "host": q.get("host", host),
+            "sni": q.get("sni", host),
+            "alpn": q.get("alpn", "h2,http/1.1"),
+            "encryption": q.get("encryption", "none"),
+        }
+    if scheme == "trojan":
+        return {
+            "protocol": "trojan",
+            "id": auth,
+            "address": host,
+            "port": port,
+            "remark": remark,
+            "network": q.get("type", "ws"),
+            "mode": q.get("mode", "packet-up"),
+            "security": q.get("security", "tls"),
+            "path": q.get("path", "/trojan-ws"),
+            "host": q.get("host", host),
+            "sni": q.get("sni", host),
+            "alpn": q.get("alpn", "h2,http/1.1"),
+        }
+    if scheme == "ss":
+        import base64 as _b64
+        method, password = "", ""
+        try:
+            pad = "=" * (-len(auth) % 4)
+            method, password = _b64.urlsafe_b64decode(auth + pad).decode().split(":", 1)
+        except Exception:
+            return {}
+        plugin = unquote(q.get("plugin", ""))
+        ppath, phost, ptls = "/ss-ws", host, False
+        for part in plugin.split(";"):
+            part = part.strip()
+            if part.startswith("path="):
+                ppath = part[5:]
+            elif part.startswith("host="):
+                phost = part[5:]
+            elif part == "tls":
+                ptls = True
+        return {
+            "protocol": "shadowsocks",
+            "method": method,
+            "password": password,
+            "address": host,
+            "port": port,
+            "remark": remark,
+            "security": "tls" if ptls else "none",
+            "path": ppath,
+            "host": phost,
+            "sni": phost,
+        }
+    return {}
+
+def _xray_proxy_outbound(p: dict) -> dict:
+    addr = p.get("address", "")
+    port = int(p.get("port") or 443)
+    proto = p.get("protocol")
+    if proto in ("vless", "trojan"):
+        if proto == "vless":
+            settings = {"vnext": [{"address": addr, "port": port, "users": [{"id": p.get("id", ""), "level": 0, "encryption": p.get("encryption", "none")}]}]}
+        else:
+            settings = {"servers": [{"address": addr, "port": port, "password": p.get("id", ""), "level": 0}]}
+        net = p.get("network", "ws")
+        stream = {"network": net, "security": p.get("security", "tls")}
+        if net == "ws":
+            stream["wsSettings"] = {"path": p.get("path", "/"), "headers": {"Host": p.get("host", addr)}}
+        else:
+            stream["xhttpSettings"] = {
+                "path": p.get("path", "/"),
+                "mode": p.get("mode", "packet-up"),
+                "host": p.get("host", addr),
+                "headers": {"Path": [p.get("path", "/")]},
+            }
+        alpn = [a.strip() for a in str(p.get("alpn", "h2,http/1.1")).split(",") if a.strip()]
+        stream["tlsSettings"] = {
+            "allowInsecure": False,
+            "serverName": p.get("sni") or p.get("host", addr),
+            "show": False,
+            "alpn": alpn,
+        }
+        return {"tag": "proxy", "protocol": proto, "settings": settings, "streamSettings": stream, "mux": _xray_mux()}
+    if proto == "shadowsocks":
+        return {
+            "tag": "proxy",
+            "protocol": "shadowsocks",
+            "settings": {"servers": [{"address": addr, "port": port, "method": p.get("method", ""), "password": p.get("password", ""), "level": 0}]},
+            "streamSettings": {
+                "network": "ws",
+                "security": p.get("security", "tls"),
+                "wsSettings": {"path": p.get("path", "/ss-ws"), "headers": {"Host": p.get("host", addr)}},
+            },
+        }
+    return {}
+
+def build_xray_socks_config(remark: str, parsed: dict, socks_port: int, listen: str) -> str:
+    proxy = _xray_proxy_outbound(parsed) if parsed else {}
+    if not proxy:
+        return ""
+    cfg = {
+        "remarks": remark or "HS SOCKS",
+        "log": {"loglevel": "warning"},
+        "inbounds": [_xray_socks_inbound(socks_port, listen)],
+        "outbounds": [proxy, _xray_direct(), _xray_block()],
+        "dns": XRAY_DNS_BLOCK,
+        "routing": XRAY_ROUTING_BLOCK,
+    }
+    return json.dumps(cfg, ensure_ascii=False, indent=2)
+
+def _run_link_probe(host: str) -> dict:
+    import time
+    import socket
+    import ssl
+    result = {"ok": False, "tests": []}
+    t0 = time.time()
+    try:
+        ip = socket.gethostbyname(host)
+        result["tests"].append({"name": "DNS resolve", "ok": True, "ms": int((time.time() - t0) * 1000), "detail": f"{host} → {ip}"})
+    except Exception as e:
+        result["tests"].append({"name": "DNS resolve", "ok": False, "error": str(e)})
+        return result
+    t0 = time.time()
+    try:
+        sock = socket.create_connection((host, 443), timeout=5)
+        result["tests"].append({"name": "TCP connect (:443)", "ok": True, "ms": int((time.time() - t0) * 1000)})
+        sock.close()
+    except Exception as e:
+        result["tests"].append({"name": "TCP connect (:443)", "ok": False, "error": str(e)})
+        return result
+    t0 = time.time()
+    try:
+        ctx = ssl.create_default_context()
+        with socket.create_connection((host, 443), timeout=5) as sock:
+            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                tls_ver = ssock.version()
+        result["tests"].append({"name": "TLS handshake", "ok": True, "ms": int((time.time() - t0) * 1000), "detail": tls_ver})
+    except Exception as e:
+        result["tests"].append({"name": "TLS handshake", "ok": False, "error": str(e)})
+        return result
+    result["ok"] = True
+    result["total_ms"] = sum(t.get("ms", 0) for t in result["tests"] if t.get("ms"))
+    return result
+
+async def _test_link_async(uid: str) -> dict:
+    async with LINKS_LOCK:
+        link = dict(LINKS.get(uid) or {})
+    if not link:
+        return {"ok": False, "error": "config not found"}
+    if not is_link_allowed(link):
+        return {"ok": False, "error": "config disabled or quota exceeded"}
+    host = get_host()
+    probe = await asyncio.to_thread(_run_link_probe, host)
+    return {
+        "ok": probe["ok"],
+        "uuid": uid,
+        "label": link.get("label", ""),
+        "protocol": link.get("protocol", DEFAULT_PROTOCOL),
+        "host": host,
+        "tests": probe["tests"],
+        "total_ms": probe.get("total_ms"),
+    }
+
+def _gen_cfg_public(c: dict, links_snap: dict) -> dict:
+    vless_uuid = c.get("vless_uuid") or ""
+    link = links_snap.get(vless_uuid) if vless_uuid else None
+    socks_port = int(c.get("socks_port") or 10808)
+    listen = c.get("listen") or "127.0.0.1"
+    xray_json = c.get("xray_json")
+    if not xray_json and link:
+        url = generate_share_link(vless_uuid, get_host(), remark=str(c.get("name") or ""), protocol=link.get("protocol", DEFAULT_PROTOCOL))
+        xray_json = build_xray_socks_config(str(c.get("name") or ""), _parse_proxy_link(url), socks_port, listen)
+    limit_gb = float(c.get("limit_gb") or 0)
+    return {
+        "id": c.get("id"),
+        "name": c.get("name", ""),
+        "vless_uuid": vless_uuid,
+        "base_label": (link or {}).get("label", ""),
+        "base_protocol": (link or {}).get("protocol", c.get("protocol") or "vless-ws"),
+        "socks_port": socks_port,
+        "listen": listen,
+        "limit_bytes": int(c.get("limit_bytes") or 0) or int(limit_gb * 1024 ** 3),
+        "used_bytes": int(c.get("used_bytes") or 0),
+        "expires_at": c.get("expires_at"),
+        "expired": bool(c.get("expires_at") and is_link_expired({"expires_at": c.get("expires_at")})),
+        "active": bool(c.get("active", True)),
+        "note": c.get("note", ""),
+        "created_at": c.get("created_at"),
+        "xray_json": xray_json,
+    }
+
 VPS_LOCK = asyncio.Lock()
+SOCKS_LOCK = asyncio.Lock()
 
 def _get_user_vps(username: str) -> dict:
     b = _user_bucket(username)
     if "vps_servers" not in b:
         b["vps_servers"] = {}
     return b["vps_servers"]
+
+def _get_user_socks(username: str) -> dict:
+    b = _user_bucket(username)
+    if "socks_configs" not in b:
+        b["socks_configs"] = {}
+    return b["socks_configs"]
+
+async def _build_socks_record(body: dict) -> dict | None:
+    name = str(body.get("name") or "").strip()[:80]
+    vless_uuid = str(body.get("vless_uuid") or "").strip()
+    if not name or not vless_uuid:
+        return None
+    async with LINKS_LOCK:
+        link = LINKS.get(vless_uuid)
+        if not link:
+            return None
+        proto = link.get("protocol", DEFAULT_PROTOCOL)
+    socks_port = int(body.get("socks_port") or 10808)
+    if not (1 <= socks_port <= 65535):
+        socks_port = 10808
+    listen = str(body.get("listen") or "127.0.0.1").strip() or "127.0.0.1"
+    if listen not in ("127.0.0.1", "0.0.0.0", "::"):
+        listen = "127.0.0.1"
+    url = generate_share_link(vless_uuid, get_host(), remark=name, protocol=proto)
+    xray_json = build_xray_socks_config(name, _parse_proxy_link(url), socks_port, listen)
+    if not xray_json:
+        return None
+    lv = float(body.get("limit_value") or 0)
+    lu = body.get("limit_unit") or "GB"
+    exp_days = int(body.get("expires_days") or 0)
+    return {
+        "id": generate_uuid(),
+        "name": name,
+        "vless_uuid": vless_uuid,
+        "socks_port": socks_port,
+        "listen": listen,
+        "limit_bytes": 0 if lv <= 0 else parse_size_to_bytes(lv, lu),
+        "used_bytes": 0,
+        "expires_at": (datetime.now() + timedelta(days=exp_days)).isoformat() if exp_days > 0 else None,
+        "active": True,
+        "note": str(body.get("note") or "").strip()[:300],
+        "created_at": datetime.now().isoformat(),
+        "xray_json": xray_json,
+    }
+
+def _apply_gen_cfg_edits(c: dict, body: dict, links_snap: dict) -> bool:
+    changed = False
+    if "name" in body:
+        c["name"] = str(body["name"]).strip()[:80] or c["name"]
+        changed = True
+    if "vless_uuid" in body and str(body["vless_uuid"] or ""):
+        if str(body["vless_uuid"]) not in links_snap:
+            raise HTTPException(status_code=400, detail="کانفیگ مبنا پیدا نشد")
+        c["vless_uuid"] = str(body["vless_uuid"])
+        changed = True
+    if "socks_port" in body:
+        try:
+            p = int(body["socks_port"])
+            if 1 <= p <= 65535:
+                c["socks_port"] = p
+                changed = True
+        except (TypeError, ValueError):
+            pass
+    if "listen" in body:
+        lv = str(body["listen"] or "").strip()
+        if lv in ("127.0.0.1", "0.0.0.0", "::"):
+            c["listen"] = lv
+            changed = True
+    if "active" in body:
+        c["active"] = bool(body["active"])
+    if "note" in body:
+        c["note"] = str(body["note"]).strip()[:300]
+    if "limit_value" in body:
+        lv = float(body.get("limit_value") or 0)
+        lu = body.get("limit_unit") or "GB"
+        c["limit_bytes"] = 0 if lv <= 0 else parse_size_to_bytes(lv, lu)
+    if "expires_days" in body:
+        ed = int(body.get("expires_days") or 0)
+        c["expires_at"] = (datetime.now() + timedelta(days=ed)).isoformat() if ed > 0 else None
+    if body.get("reset_usage"):
+        c["used_bytes"] = 0
+    if changed and c.get("vless_uuid") and c["vless_uuid"] in links_snap:
+        link = links_snap[c["vless_uuid"]]
+        url = generate_share_link(c["vless_uuid"], get_host(), remark=c["name"], protocol=link.get("protocol", DEFAULT_PROTOCOL))
+        c["xray_json"] = build_xray_socks_config(c["name"], _parse_proxy_link(url), int(c.get("socks_port") or 10808), c.get("listen") or "127.0.0.1")
+    return changed
 
 @app.get("/api/vps")
 async def list_vps(username=Depends(require_auth)):
@@ -3225,6 +3474,7 @@ async def list_vps(username=Depends(require_auth)):
             "note": s.get("note", ""),
             "protected": True,
             "configs_count": len(cfgs),
+            "active_configs": sum(1 for c in cfgs if c.get("active", True) and not is_link_expired({"expires_at": c.get("expires_at")})),
             "created_at": s.get("created_at"),
         })
     result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
@@ -3274,31 +3524,56 @@ async def delete_vps(sid: str, username=Depends(require_auth)):
 @app.post("/api/vps/{sid}/configs")
 async def create_vps_config(sid: str, request: Request, username=Depends(require_auth)):
     body = await request.json()
-    name = str(body.get("name") or "کانفیگ جدید").strip()[:80]
-    if not name:
-        raise HTTPException(status_code=400, detail="نام کانفیگ الزامی است")
-    cid = generate_uuid()
-    cfg = {
-        "id": cid,
-        "name": name,
-        "protocol": str(body.get("protocol") or "vless-ws")[:30],
-        "port": int(body.get("port") or 443),
-        "limit_gb": float(body.get("limit") or 0),
-        "expires_days": int(body.get("expires") or 0),
-        "note": str(body.get("note") or "")[:300],
-        "created_at": datetime.now().isoformat(),
-    }
     async with VPS_LOCK:
         servers = _get_user_vps(username)
         if sid not in servers:
             raise HTTPException(status_code=404, detail="سرور پیدا نشد")
         if "configs" not in servers[sid]:
             servers[sid]["configs"] = []
-        servers[sid]["configs"].append(cfg)
+        if body.get("vless_uuid"):
+            rec = await _build_socks_record(body)
+            if rec is None:
+                raise HTTPException(status_code=400, detail="نام کانفیگ و کانفیگ مبنا (VLESS) الزامی است")
+            servers[sid]["configs"].append(rec)
+            name = rec["name"]
+        else:
+            name = str(body.get("name") or "کانفیگ جدید").strip()[:80]
+            if not name:
+                raise HTTPException(status_code=400, detail="نام کانفیگ الزامی است")
+            cfg = {
+                "id": generate_uuid(),
+                "name": name,
+                "protocol": str(body.get("protocol") or "vless-ws")[:30],
+                "port": int(body.get("port") or 443),
+                "limit_gb": float(body.get("limit") or 0),
+                "expires_days": int(body.get("expires") or 0),
+                "note": str(body.get("note") or "")[:300],
+                "created_at": datetime.now().isoformat(),
+            }
+            servers[sid]["configs"].append(cfg)
         srv_name = servers[sid].get("name", "")
+        created = servers[sid]["configs"][-1]
     asyncio.create_task(save_state())
     log_activity("vps", f"کانفیگ VPS «{name}» روی سرور «{srv_name}» ساخته شد", "ok")
-    return {"ok": True, "config": cfg}
+    async with LINKS_LOCK:
+        snap = dict(LINKS)
+    return {"ok": True, "config": _gen_cfg_public(created, snap)}
+
+@app.patch("/api/vps/{sid}/configs/{cid}")
+async def update_vps_config(sid: str, cid: str, request: Request, username=Depends(require_auth)):
+    body = await request.json()
+    async with VPS_LOCK, LINKS_LOCK:
+        servers = _get_user_vps(username)
+        if sid not in servers:
+            raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+        cfgs = servers[sid].get("configs", [])
+        c = next((x for x in cfgs if x.get("id") == cid), None)
+        if c is None:
+            raise HTTPException(status_code=404, detail="کانفیگ پیدا نشد")
+        _apply_gen_cfg_edits(c, body, dict(LINKS))
+    asyncio.create_task(save_state())
+    log_activity("vps", f"کانفیگ VPS «{c['name']}» ویرایش شد", "info")
+    return {"ok": True}
 
 @app.delete("/api/vps/{sid}/configs/{cid}")
 async def delete_vps_config(sid: str, cid: str, username=Depends(require_auth)):
@@ -3307,9 +3582,22 @@ async def delete_vps_config(sid: str, cid: str, username=Depends(require_auth)):
         if sid not in servers:
             raise HTTPException(status_code=404, detail="سرور پیدا نشد")
         cfgs = servers[sid].get("configs", [])
+        name = next((c.get("name") for c in cfgs if c.get("id") == cid), cid)
         servers[sid]["configs"] = [c for c in cfgs if c.get("id") != cid]
     asyncio.create_task(save_state())
+    log_activity("vps", f"کانفیگ VPS «{name}» حذف شد", "err")
     return {"ok": True}
+
+@app.post("/api/vps/{sid}/configs/{cid}/test")
+async def test_vps_config(sid: str, cid: str, username=Depends(require_auth)):
+    servers = _get_user_vps(username)
+    s = servers.get(sid)
+    if not s:
+        raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+    c = next((x for x in s.get("configs", []) if x.get("id") == cid), None)
+    if not c:
+        raise HTTPException(status_code=404, detail="کانفیگ پیدا نشد")
+    return await _test_link_async(c.get("vless_uuid") or "")
 
 @app.get("/api/vps/{sid}")
 async def get_vps_detail(sid: str, username=Depends(require_auth)):
@@ -3317,17 +3605,75 @@ async def get_vps_detail(sid: str, username=Depends(require_auth)):
     if sid not in servers:
         raise HTTPException(status_code=404, detail="سرور پیدا نشد")
     s = servers[sid]
+    cfgs = s.get("configs", [])
+    async with LINKS_LOCK:
+        snap = dict(LINKS)
     return {
         "id": sid,
-        **{k: v for k, v in s.items() if k != "password"},
+        **{k: v for k, v in s.items() if k not in ("password", "configs")},
         "has_password": bool(s.get("password")),
-        "configs": s.get("configs", []),
+        "configs_count": len(cfgs),
+        "active_configs": sum(1 for c in cfgs if c.get("active", True) and not is_link_expired({"expires_at": c.get("expires_at")})),
+        "configs": [_gen_cfg_public(c, snap) for c in cfgs],
     }
 
+@app.get("/api/socks")
+async def list_socks(username=Depends(require_auth)):
+    async with LINKS_LOCK:
+        snap = dict(LINKS)
+    socks = _get_user_socks(username)
+    out = [_gen_cfg_public(c, snap) for c in socks.values()]
+    out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    return {"socks": out}
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VLESS Relay
-# ══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/socks")
+async def create_socks(request: Request, username=Depends(require_auth)):
+    body = await request.json()
+    rec = await _build_socks_record(body)
+    if rec is None:
+        raise HTTPException(status_code=400, detail="نام کانفیگ و کانفیگ مبنا (VLESS) الزامی است")
+    async with SOCKS_LOCK:
+        _get_user_socks(username)[rec["id"]] = rec
+    asyncio.create_task(save_state())
+    log_activity("socks", f"کانفیگ SOCKS «{rec['name']}» ساخته شد", "ok")
+    async with LINKS_LOCK:
+        snap = dict(LINKS)
+    return {"ok": True, "config": _gen_cfg_public(rec, snap)}
+
+@app.patch("/api/socks/{cid}")
+async def update_socks(cid: str, request: Request, username=Depends(require_auth)):
+    body = await request.json()
+    async with SOCKS_LOCK, LINKS_LOCK:
+        socks = _get_user_socks(username)
+        if cid not in socks:
+            raise HTTPException(status_code=404, detail="کانفیگ پیدا نشد")
+        c = socks[cid]
+        _apply_gen_cfg_edits(c, body, dict(LINKS))
+    asyncio.create_task(save_state())
+    log_activity("socks", f"کانفیگ SOCKS «{c['name']}» ویرایش شد", "info")
+    return {"ok": True}
+
+@app.delete("/api/socks/{cid}")
+async def delete_socks(cid: str, username=Depends(require_auth)):
+    async with SOCKS_LOCK:
+        socks = _get_user_socks(username)
+        if cid not in socks:
+            raise HTTPException(status_code=404, detail="کانفیگ پیدا نشد")
+        name = socks[cid].get("name", cid)
+        del socks[cid]
+    asyncio.create_task(save_state())
+    log_activity("socks", f"کانفیگ SOCKS «{name}» حذف شد", "err")
+    return {"ok": True}
+
+@app.post("/api/socks/{cid}/test")
+async def test_socks(cid: str, username=Depends(require_auth)):
+    c = _get_user_socks(username).get(cid)
+    if not c:
+        raise HTTPException(status_code=404, detail="کانفیگ پیدا نشد")
+    return await _test_link_async(c.get("vless_uuid") or "")
+
+
+
 from protocol.vless.vless import (
     RELAY_BUF,
     parse_vless_header,
@@ -3343,10 +3689,10 @@ from protocol.shadowsocks.shadowsocks import generate_ss_link, derive_key, CIPHE
 from protocol.shadowsocks.websocket import shadowsocks_ws_tunnel
 
 
-# ── HTTP probe endpoints (برای Railway/Render و CDN‌ها) ──────────────────────
-# V2RayNG و بسیاری از کلاینت‌ها قبل از WebSocket Upgrade یه HTTP GET می‌فرستن
-# (Health check / TLS probe). اگه 404/403 برگرده، connection قطع میشه.
-# این endpointها باید قبل از WebSocket routes ثبت بشن تا FastAPI اول این‌ها رو match کنه.
+
+
+
+
 @app.api_route("/ws/{uuid}", methods=["GET", "HEAD", "POST"])
 async def ws_http_probe(uuid: str):
     return {"ok": True, "service": "HS-Panel", "transport": "ws"}
@@ -3359,21 +3705,21 @@ async def trojan_ws_http_probe():
 async def ss_ws_http_probe():
     return {"ok": True, "service": "HS-Panel", "transport": "ss-ws"}
 
-# XHTTP pathها هم probe-friendly میشن
+
 @app.api_route("/xhttp-siz10/{mode}/{uuid}", methods=["GET", "HEAD"])
 async def xhttp_http_probe(mode: str, uuid: str):
     return {"ok": True, "service": "HS-Panel", "transport": f"xhttp-{mode}"}
 
-# حالا WebSocket routes ثبت میشن
+
 app.add_api_websocket_route("/ws/{uuid}", websocket_tunnel)
 app.add_api_websocket_route("/trojan-ws", trojan_ws_tunnel)
 app.add_api_websocket_route("/ss-ws", shadowsocks_ws_tunnel)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP
-# ══════════════════════════════════════════════════════════════════════════════
-# نکته: مطابق نسخه‌ی مرجع (xhttp_siz10.py) مود stream-one حذف شده؛ فقط
-# packet-up و stream-up فعال هستن. روترهای stream-one دیگه include نمی‌شن.
+
+
+
+
+
 from protocol.vless.xhttpstreamon import router as xhttp_downlink_router
 from protocol.vless.xhttpstreamup import router as xhttp_streamup_router
 from protocol.vless.xhttshadpacketup import router as xhttp_packetup_router
@@ -3388,7 +3734,7 @@ app.include_router(trojan_xhttp_downlink_router)
 app.include_router(trojan_xhttp_streamup_router)
 app.include_router(trojan_xhttp_packetup_router)
 
-# ── HTTP Proxy ────────────────────────────────────────────────────────────────
+
 _HOP = {"connection","keep-alive","proxy-authenticate","proxy-authorization",
         "te","trailers","transfer-encoding","upgrade","content-encoding","content-length"}
 
@@ -3410,7 +3756,7 @@ async def http_proxy(target_url: str, request: Request):
         error_logs.append({"error": str(exc), "url": target_url, "time": datetime.now().isoformat()})
         raise HTTPException(status_code=502, detail=f"Proxy error: {exc}")
 
-# ── Public sub page ───────────────────────────────────────────────────────────
+
 @app.get("/p/{uuid_key}", response_class=HTMLResponse)
 async def public_sub_page(uuid_key: str, request: Request):
     from pages import get_public_page_html
@@ -3424,7 +3770,7 @@ async def public_sub_page(uuid_key: str, request: Request):
 
 @app.get("/api/public/sub/{uuid_key}")
 async def public_sub_data(uuid_key: str, request: Request):
-    # ۱. احراز هویت و دریافت داده‌ها (همان منطق قبلی شما)
+
     async with SUBS_LOCK:
         sub_entry = next(((sid, s) for sid, s in SUBS.items() if s.get("uuid_key") == uuid_key), None)
     if not sub_entry:
@@ -3445,8 +3791,8 @@ async def public_sub_data(uuid_key: str, request: Request):
 
     links_out = []
     active_conns = 0
-    
-    # ۲. ساخت لیست کانفیگ‌ها
+
+
     for lid in link_ids:
         link = snap.get(lid)
         if not link: continue
@@ -3464,7 +3810,7 @@ async def public_sub_data(uuid_key: str, request: Request):
             "vless_link": generate_share_link(lid, host, remark=f"HS-{link['label']}", protocol=proto),
         })
 
-    # ۲.۵ کانفیگ‌های نودهای دیگر
+
     if node_link_ids:
         async with NODES_LOCK:
             nodes_snap = {nid: dict(n) for nid, n in NODES.items()}
@@ -3497,9 +3843,9 @@ async def public_sub_data(uuid_key: str, request: Request):
                 "vless_link": node_link["vless_link"],
             })
 
-    # ۲.۶ کانفیگ‌های ایستا (foreign_links) — مثلاً کانفیگ‌های پنل مرکزی که روی
-    # یک نود اضافه شده‌اند؛ چون این نود به پنل مرکزی دسترسی برگشتی ندارد،
-    # این کانفیگ‌ها به‌صورت اسنپ‌شات (لینک آماده) ذخیره و همینجا نمایش داده می‌شوند.
+
+
+
     for fl in sub.get("foreign_links", []):
         vl = fl.get("vless_link")
         if not vl:
@@ -3514,29 +3860,29 @@ async def public_sub_data(uuid_key: str, request: Request):
             "vless_link": vl,
         })
 
-    # ۳. تشخیص کلاینت یا مرورگر
+
     user_agent = request.headers.get("User-Agent", "").lower()
     is_client = any(ua in user_agent for ua in ["v2rayng", "v2rayn", "shadowrocket", "clash", "surfboard", "nekoray"])
 
     if is_client:
-        # اگر کلاینت است: فقط لینک‌های فعال را به صورت Base64 برگردان
+
         raw_links = "\n".join([l["vless_link"] for l in links_out if l["active"]])
         encoded_data = base64.b64encode(raw_links.encode("utf-8")).decode("utf-8")
         return Response(content=encoded_data, media_type="text/plain")
 
-    # ۴. اگر مرورگر است: دیتای کامل JSON را برگردان
+
     return {
         "locked": False,
         "name": f"پنل: {sub['name']}",
         "desc": sub.get("desc", ""),
         "sub_url": f"https://{host}/sub-group/{uuid_key}",
         "active_connections": active_conns,
-        "links": links_out, # اینجا همان لیست کامل شماست
+        "links": links_out,
     }
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Version / Auto-Update
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
 from updater import (
     get_current_version, get_current_version_info,
     get_latest_version_info, perform_update,
@@ -3609,7 +3955,7 @@ async def api_update(_=Depends(require_auth)):
     log_activity("system", "درخواست بروزرسانی پنل ثبت شد", "info")
     return {"ok": True, "started": True}
 
-# ── Settings: توقف کامل لاگ‌گیری (برای بیشترین throughput ممکن) ─────────────────
+
 @app.get("/api/settings/logging")
 async def get_logging_setting(_=Depends(require_auth)):
     return {"disabled": bool(CONFIG.get("disable_logging"))}
@@ -3625,10 +3971,10 @@ async def set_logging_setting(request: Request, _=Depends(require_auth)):
     return {"ok": True, "disabled": disabled}
 
 
-# ── HTML Pages ───────────────────────────────────────────────────────────────
+
 from pages import LOGIN_HTML, DASHBOARD_HTML
 
-# ── Central: Announcements & Support ─────────────────────────────────────────
+
 @app.get("/api/announcements")
 async def api_announcements(_=Depends(require_auth)):
     return {"announcements": await central.fetch_announcements()}
@@ -3671,7 +4017,7 @@ async def dashboard(request: Request):
     info = await get_session_info(request.cookies.get(SESSION_COOKIE))
     if not info:
         return RedirectResponse(url="/login")
-    CUR_USER.set(info["username"])  # پنل/لینک پیش‌فرض به‌تفکیک هر کاربر
+    CUR_USER.set(info["username"])
     await ensure_default_link()
     return HTMLResponse(content=DASHBOARD_HTML, headers={"Cache-Control": "no-store"})
 
@@ -3680,9 +4026,9 @@ async def test_ws_redirect():
     return HTMLResponse(content="<script>location.href='/dashboard'</script>")
 
 if __name__ == "__main__":
-    # Cloudflare Worker روی پورت 80 وصل میشه (Railway از 443 استفاده می‌کنه ولی
-    # Cloudflare Worker به 443 Railway نمیتونه مستقیم بزنه چون CDN وسطشه).
-    # بنابراین هم پورت اصلی (CONFIG["port"] = 8000) و هم پورت 80 گوش میدیم.
+
+
+
     import threading
     main_port = CONFIG["port"]
 
@@ -3692,8 +4038,8 @@ if __name__ == "__main__":
     logger.info("==============================================================")
 
     if os.environ.get("RELOAD", "").strip().lower() in ("1", "true", "yes", "on"):
-        # حالت توسعه محلی: با هر تغییر فایل، سرور خودکار ری‌استارت می‌شود.
-        # (پورت 80 اضافه در این حالت لازم نیست)
+
+
         logger.info("RELOAD mode: با هر تغییر فایل، سرور خودکار ری‌استارت می‌شود")
         uvicorn.run("main:app", host="0.0.0.0", port=main_port, log_level="info", reload=True)
         raise SystemExit(0)
@@ -3721,7 +4067,7 @@ if __name__ == "__main__":
                 http="auto",
             )
         except OSError as e:
-            # پورت 80 در برخی محیط‌ها باز نیست — مشکلی نیست
+
             logger.warning(f"پورت 80 باز نشد: {e}")
 
     if main_port != 80:

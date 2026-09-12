@@ -1,8 +1,8 @@
-# xhttshadpacketup.py (trojan)
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP — آپلینک packet-up (با seq) اختصاصی Trojan.
-# مستقل از موتور VLESS، مسیر با پیشوند /txhttp-siz10.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
 
 import time
 import traceback
@@ -42,8 +42,8 @@ async def trojan_packet_up_upload(uuid: str, session_id: str, seq: int, request:
     if not body:
         return {"ok": True}
 
-    # به همون دلیلی که در نسخه‌ی VLESS توضیح داده شده: batch کردن کوتا به‌جای
-    # await روی هر پکت کوچیک، تا قفل سراسری هر پکت رو گلوگاه نکنه.
+
+
     gate = sess.get("gate")
     if gate is None:
         gate = _TrojanQuotaGate(uuid)

@@ -1,16 +1,16 @@
-# mtproto_native.py
-# ══════════════════════════════════════════════════════════════════════════════
-# بک‌اند رسمی MTProto — بعد از تست mtg و telemt که هردو توی ad-tag/middle-proxy
-# باگ داشتن (خصوصاً روی Railway)، این ماژول مستقیماً باینری رسمی خودِ تلگرام
-# (https://github.com/TelegramMessenger/MTProxy) رو کامپایل و اجرا می‌کنه —
-# دقیقاً همون باینری‌ای که تصویر رسمی دیترِ Docker ازش استفاده می‌کنه و ad-tag
-# روش تضمینی کار می‌کنه.
-#
-# معماری: درست مثل نسخه‌ی قدیمی mtg شما — یک پروسه به‌ازای هر لینک/کاربر
-# (per-instance / per-port). این باینری رسمی per-process فقط یک ad-tag
-# (-P) قبول می‌کنه، ولی چون هرکاربر پروسه‌ی خودش رو داره، این یعنی هرکاربر
-# همچنان ad_tag مستقل خودش رو داره — دقیقاً چیزی که این gateway نیاز داره.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
 import asyncio
 import ipaddress
 import os
@@ -39,12 +39,12 @@ MTP_DIR = DATA_DIR / "mtproxy"
 SRC_DIR = MTP_DIR / "src"
 BIN_PATH = MTP_DIR / "mtproto-proxy"
 BACKEND_CONF = MTP_DIR / "backend.conf"
-# نکته: اسم فایل عمداً عوض شده (v2) — نسخه‌های قبلی این پروژه اینجا یک سکرت
-# رندوم ۴۸ بایتیِ غلط می‌نوشتن؛ با اسم جدید مطمئنیم روی هر دیپلوی قدیمی هم
-# یک‌بار قطعاً از core.telegram.org دانلود واقعی انجام می‌شه، نه cache خراب.
-AES_PWD_FILE = MTP_DIR / "proxy-secret-v2"  # از core.telegram.org/getProxySecret دانلود می‌شود (نه رندوم محلی!)
 
-DEFAULT_FAKE_TLS_DOMAIN = ""  # فقط برای سازگاری با لینک‌های قدیمی؛ این باینری از FakeTLS مجزا استفاده نمی‌کنه
+
+
+AES_PWD_FILE = MTP_DIR / "proxy-secret-v2"
+
+DEFAULT_FAKE_TLS_DOMAIN = ""
 
 MTPROTO_PORT_RANGE_START = int(os.environ.get("MTPROTO_PORT_START", 8500))
 MTPROTO_PORT_RANGE_END = int(os.environ.get("MTPROTO_PORT_END", 8600))
@@ -55,7 +55,7 @@ PORT_RETRY_DELAY = 0.3
 STOP_PORT_FREE_ATTEMPTS = 20
 STOP_PORT_FREE_DELAY = 0.3
 STARTUP_VERIFY_DELAY = 0.7
-BACKEND_CONF_MAX_AGE = 6 * 3600  # هر ۶ ساعت رفرش
+BACKEND_CONF_MAX_AGE = 6 * 3600
 
 WORKERS = int(os.environ.get("MTP_WORKERS", 2))
 MAX_CONN = int(os.environ.get("MTP_MAX_CONN", 60000))
@@ -82,7 +82,7 @@ def _mask_secret(secret: str) -> str:
     return f"{secret[:8]}…{secret[-6:]}"
 
 
-# ── ساخت باینری رسمی از سورس (ریلیز پیش‌کامپایل رسمی وجود نداره) ──────────────
+
 async def ensure_binary() -> bool:
     if BIN_PATH.exists() and os.access(BIN_PATH, os.X_OK):
         return True
@@ -93,7 +93,7 @@ async def ensure_binary() -> bool:
         logger.info("MTP: باینری mtproto-proxy پیدا نشد، شروع build از سورس رسمی تلگرام...")
         MTP_DIR.mkdir(parents=True, exist_ok=True)
 
-        # پکیج‌های لازم برای build (فقط یک‌بار روی هر container)
+
         try:
             subprocess.run(
                 ["bash", "-c",
@@ -152,22 +152,10 @@ async def _ensure_backend_conf() -> bool:
         return False
 
 
-AES_PWD_MAX_AGE = 24 * 3600  # طبق توصیه‌ی رسمی: حداکثر هر ۲۴ ساعت رفرش
+AES_PWD_MAX_AGE = 24 * 3600
 
 async def _ensure_aes_pwd_file() -> Path:
-    """🔴 نکته‌ی حیاتی که علت اصلیِ «پروکسی ساخته می‌شه ولی پینگ نمی‌ده» بود:
-    این فایل یک secret دلخواه/رندوم محلی نیست! طبق مستندات رسمی
-    (https://github.com/TelegramMessenger/MTProxy#running، مرحله‌ی ۱)، این فایل
-    باید دقیقاً از سرور خودِ تلگرام دانلود بشه:
-        curl -s https://core.telegram.org/getProxySecret -o proxy-secret
-    این کلید AES برای هندشیک بین این پروسه و بک‌اندِ واقعیِ تلگرامه (نه بین
-    پروسه و کلاینت). قبلاً اینجا با secrets.token_bytes(48) یک مقدار رندوم
-    محلی نوشته می‌شد — باینری با همون مقدار جعلی هم بی‌سروصدا بالا می‌اومد و
-    پورت رو باز می‌کرد (برای همین "ساخته می‌شد")، ولی چون کلید واقعی نبود،
-    هیچ‌وقت نمی‌تونست با core.telegram.org handshake کنه، پس هیچ ترافیکی رد
-    نمی‌شد: کلاینت وصل می‌شد ولی پینگ نمی‌گرفت و دیتا رد نمی‌شد.
-    فایل واقعی همیشه ۱۰۴ بایته (توسط خودمون هم تست و تأیید شد) و کاملاً داخل
-    بازه‌ی مجاز baینری (۳۲ تا ۲۵۶ بایت) هست."""
+
     if AES_PWD_FILE.exists():
         age = time.time() - AES_PWD_FILE.stat().st_mtime
         size = AES_PWD_FILE.stat().st_size
@@ -202,10 +190,10 @@ async def _detect_ips() -> tuple[str, str]:
         except Exception:
             _internal_ip = "0.0.0.0"
     if _external_ip is None:
-        # نکته‌ی مهم: باید حتماً IPv4 باشه (دقیقاً مثل اسکریپت رسمی که `curl -4`
-        # می‌زنه) — چون --nat-info با فرمت <ipv4>:<ipv4> پارس می‌شه و اگه یه IPv6
-        # (که پر از ':' هست) برگرده، پارسر باینری خطای "cannot translate host"
-        # می‌ده و پروسه فوراً crash می‌کنه.
+
+
+
+
         transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
         for url in ("https://api.ipify.org", "https://digitalresistance.dog/myIp",
                     "https://ipv4.icanhazip.com"):
@@ -259,26 +247,22 @@ async def allocate_port_async(preferred: int | None = None, force: bool = False,
 
 
 def generate_secret() -> str:
-    """سکرت خام ۳۲ کاراکتری هگز — فرمت بومی باینری رسمی (بدون پیشوند ee)."""
+
     return secrets.token_hex(16)
 
 
 def sanitize_domain(raw: str | None) -> str:
-    """دامنه‌ی FakeTLS رو تمیز می‌کنه.
-    چرا لازمه: توی دیتای ذخیره‌شده مقادیری مثل
-    `[www.cloudflare.com](https://www.cloudflare.com)` (لینک مارک‌داون) وجود داره.
-    چون هگزِ همین رشته داخل سکرت ee می‌ره و کلاینت با اون SNI وصل می‌شه،
-    هر کاراکتر اضافه باعث شکست کامل handshake می‌شه (وصل نمی‌شه/دیتا رد نمی‌شه)."""
+
     if not raw:
         return DEFAULT_FAKE_TLS_DOMAIN
     s = str(raw).strip()
-    # حالت مارک‌داون: [متن](آدرس) -> فقط متن داخل کروشه
+
     m = re.match(r"^\[([^\]]+)\]\(.*\)$", s)
     if m:
         s = m.group(1).strip()
-    # حذف پروتکل و مسیر، اگه کسی URL کامل وارد کرده باشه
+
     s = re.sub(r"^[a-zA-Z]+://", "", s).split("/")[0].split("?")[0].strip()
-    # فقط کاراکترهای مجاز یک hostname
+
     if not re.fullmatch(r"[A-Za-z0-9.\-]{1,253}", s) or "." not in s:
         logger.warning(f"MTP: دامنه‌ی نامعتبر {raw!r} — به {DEFAULT_FAKE_TLS_DOMAIN} برگردانده شد")
         return DEFAULT_FAKE_TLS_DOMAIN
@@ -286,10 +270,7 @@ def sanitize_domain(raw: str | None) -> str:
 
 
 def client_secret(raw_secret: str, domain: str | None = None) -> str:
-    """سکرتی که باید توی لینک تلگرام استفاده بشه.
-    - اگه FakeTLS فعاله (دامنه داریم): ee + سکرت خام + هگزِ دامنه
-    - وگرنه: dd + سکرت خام (حالت secured؛ از classic خام امن‌تره و کمتر بلاک می‌شه)
-    سکرت خام بدون پیشوند = حالت classic که توسط DPI ایران بلاک می‌شه."""
+
     if domain:
         return "ee" + raw_secret + sanitize_domain(domain).encode().hex()
     return "dd" + raw_secret
@@ -306,10 +287,7 @@ def generate_mtproto_web_link(host: str, port: int, secret: str,
 
 
 async def get_stats(uuid: str) -> dict:
-    """آمار واقعی از خود باینری (--http-stats روی 127.0.0.1:2398).
-    مهم‌ترین فیلد: total_special_connections = تعداد اتصال‌های ورودی کلاینت.
-    اگه این صفر بمونه یعنی واقعاً هیچ پکتی نمی‌رسه؛ اگه بالا بره یعنی پکت
-    می‌رسه و مشکل جای دیگه‌ست (مثلاً handshake/سکرت)."""
+
     inst = _instances.get(uuid)
     if not inst or inst["proc"].returncode is not None:
         return {"error": "instance اجرا نیست"}
@@ -340,9 +318,9 @@ async def get_stats(uuid: str) -> dict:
     return {"summary": interesting, "raw": raw[:4000]}
 
 
-# ✅ اصلاح تابع preexec برای ویندوز
+
 def _mtp_preexec():
-    # در ویندوز ماژول resource وجود ندارد، بنابراین کاری نمی‌کنیم.
+
     if resource is None:
         return
     try:
@@ -383,13 +361,13 @@ async def _stream_process_output(uuid: str, proc: asyncio.subprocess.Process, in
 async def start_instance(
     uuid: str,
     secret: str | None = None,
-    domain: str = DEFAULT_FAKE_TLS_DOMAIN,   # دامنه‌ی FakeTLS (حالت ee)
+    domain: str = DEFAULT_FAKE_TLS_DOMAIN,
     preferred_port: int | None = None,
     force_port: bool = False,
     ad_tag: str | None = None,
 ) -> dict:
     t0 = time.monotonic()
-    # همیشه تمیزش کن — دیتای ذخیره‌شده ممکنه رشته‌ی خراب داشته باشه
+
     domain = sanitize_domain(domain)
     logger.info(f"MTP[{uuid[:8]}]: start_instance (preferred_port={preferred_port}, force={force_port}, ad_tag={ad_tag})")
 
@@ -418,29 +396,29 @@ async def start_instance(
 
         cmd_base = [
             str(BIN_PATH),
-            "-p", "2398",           # پورت کنترل داخلی (هرچی، فقط باید آزاد باشه per-process)
-            "-H", str(port),        # پورت واقعی MTProto که کلاینت بهش وصل می‌شه
+            "-p", "2398",
+            "-H", str(port),
             "-C", str(MAX_CONN),
             "--aes-pwd", str(aes_pwd),
             "-u", "root",
             str(BACKEND_CONF),
             "--allow-skip-dh",
-            "--http-stats",         # /stats روی 127.0.0.1:2398 — تنها راه قطعی برای
-                                    # دیدن این‌که واقعاً چند اتصال ورودی رسیده
+            "--http-stats",
+
             "--nat-info", f"{internal_ip}:{external_ip}",
         ]
 
-        # ── FakeTLS (حالت ee) ─────────────────────────────────────────────────
-        # 🔴 باگ دومی که اینجا بود: طبق مثال رسمی خودِ تلگرام برای حالت FakeTLS
-        # (issue #340 روی TelegramMessenger/MTProxy)، دستور واقعی این‌جوریه:
-        #   mtproto-proxy ... -M 1 -6 --domain www.my.amazing.domain
-        # یعنی -M (تعداد worker) همیشه باید کنار -D/--domain بیاد — نه اینکه با
-        # هم قاطی نشن. کد قبلی با این فرض غلط که "worker با TLS-transport
-        # توصیه نمی‌شه" وقتی FakeTLS فعال بود (که چون domain همیشه یک مقدار
-        # پیش‌فرض داره یعنی تقریباً همیشه) اصلاً -M رو نمی‌فرستاد. این دقیقاً
-        # همون چیزیه که باعث می‌شد حالت ad_tag (که برای مسیر middle-proxy به
-        # تعداد worker مشخص نیاز داره) بی‌ثبات/غیرفعال بمونه — تبلیغ توی UI
-        # "ثبت شده" نشون داده می‌شد ولی عملاً کار نمی‌کرد.
+
+
+
+
+
+
+
+
+
+
+
         use_faketls = bool(domain)
         cmd_base += ["-M", str(WORKERS)]
         if use_faketls:
@@ -450,13 +428,13 @@ async def start_instance(
         if ad_tag:
             tail += ["-P", ad_tag]
 
-        # ── چرا -6 حیاتیه ──────────────────────────────────────────────────────
-        # روتر/پروکسی داخلی Railway به کانتینر از طریق IPv6 وصل می‌شه. باینری رسمی
-        # به‌صورت پیش‌فرض فقط روی 0.0.0.0 (IPv4-only) گوش می‌ده، پس اتصال‌های
-        # TCP Proxy اصلاً به پروسه نمی‌رسن — نه ارور، نه لاگ، نه پینگ؛ دقیقاً همون
-        # علامتی که دیدیم. با -6 سوکت AF_INET6 با IPV6_V6ONLY=0 ساخته می‌شه یعنی
-        # dual-stack (هم IPv4 هم IPv6) که مستندات Railway هم همینو توصیه می‌کنه.
-        # اگه محیطی IPv6 نداشت، باینری بالا نمیاد؛ در اون صورت بدون -6 fallback می‌کنیم.
+
+
+
+
+
+
+
         attempts = [(["-6"] + tail, "IPv6 dual-stack"), (tail, "IPv4-only (fallback)")]
 
         proc = None

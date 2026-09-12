@@ -1,24 +1,36 @@
 {
-  "links": {
-    "1bca9b20-e5a7-0bcd-1385-8b866ddd9c10": {
-      "label": "لینک پیش‌فرض",
-      "limit_bytes": 0,
-      "used_bytes": 0,
-      "created_at": "2026-09-05T10:12:34.654068",
-      "active": true,
-      "expires_at": null,
-      "note": "",
-      "is_default": true,
-      "sub_id": null,
-      "protocol": "vless-ws"
+  "version": 2,
+  "users": {
+    "hossein": {
+      "password_hash": "1b425c919da38ebf66cefe9a546048c005edc434bf7408f1fc4addb94cbd6a1b",
+      "is_admin": true,
+      "created_at": "2026-09-12T14:10:37.637189",
+      "last_login": "2026-09-12T14:11:13.137736"
     }
   },
-  "subs": {},
-  "node_keys": {},
-  "nodes": {},
-  "users": {},
-  "smtp": {},
-  "password_hash": "09106e078dc4994df9c46241eccb4bbf8c387f4dbf45b2ab04fa9d0b0bb1763e",
+  "data": {
+    "hossein": {
+      "links": {
+        "1bca9b20-e5a7-0bcd-1385-8b866ddd9c10": {
+          "label": "لینک پیش‌فرض",
+          "limit_bytes": 0,
+          "used_bytes": 0,
+          "created_at": "2026-09-05T10:12:34.654068",
+          "active": true,
+          "expires_at": null,
+          "note": "",
+          "is_default": true,
+          "sub_id": null,
+          "protocol": "vless-ws"
+        }
+      },
+      "subs": {},
+      "nodes": {},
+      "node_keys": {},
+      "vps_servers": {},
+      "socks_configs": {}
+    }
+  },
   "disable_logging": false,
-  "saved_at": "2026-09-07T16:59:52.574431"
+  "saved_at": "2026-09-12T14:11:29.814564"
 }
