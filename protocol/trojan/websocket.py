@@ -19,6 +19,7 @@ from main import (
     logger,
     schedule_save,
     log_activity,
+    link_owner,
 )
 from protocol.trojan.trojan import (
     RELAY_BUF,
@@ -119,7 +120,7 @@ async def trojan_ws_tunnel(ws: WebSocket):
             "bytes": 0,
         }
         logger.info(f"✅ Trojan-WS [{conn_id}] uuid={uuid[:8]}… ip={ip} total={len(connections)}")
-        log_activity("connection", f"اتصال Trojan جدید از {ip} (کانفیگ {link.get('label','?')})", "info")
+        log_activity("connection", f"اتصال Trojan جدید از {ip} (کانفیگ {link.get('label','?')})", "info", username=link_owner(uuid))
 
         if not await check_and_use(uuid, hlen):
             await ws.close(code=1008, reason="quota/disabled")

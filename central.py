@@ -9,14 +9,16 @@ CENTRAL_URL = os.environ.get("CENTRAL_URL", "").rstrip("/")
 async def register_instance():
     if not CENTRAL_URL:
         return
-    from main import AUTH, get_host
+    from main import USERS, OWNER_USERNAME, get_host
     from updater import get_current_version
     try:
+        owner = USERS.get(OWNER_USERNAME) or {}
         async with httpx.AsyncClient(timeout=10) as c:
             await c.post(f"{CENTRAL_URL}/api/register", json={
                 "domain": get_host(),
                 "version": get_current_version(),
-                "panel_password_hash": AUTH["password_hash"],
+                "panel_username": OWNER_USERNAME,
+                "panel_password_hash": owner.get("password_hash"),
                 "description": "HS Panel instance",
             })
     except Exception:
