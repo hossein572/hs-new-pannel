@@ -10,36 +10,36 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Iran+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --hs-bg:#0C0A14;--hs-bg2:#13101E;--hs-bg3:#1A1626;
   --hs-card:rgba(22,18,34,0.88);--hs-card-in:rgba(255,255,255,0.03);
-  --hs-primary:#00FF88;--hs-primary2:#1DE9B8;--hs-primary-d:rgba(0,255,136,0.14);
-  --hs-secondary:#FF077A;--hs-secondary2:#FF6B6B;--hs-secondary-d:rgba(255,7,122,0.14);
+  --hs-purple:#9B7CFF;--hs-purple2:#B794FF;--hs-purple-d:rgba(155,124,255,0.14);
+  --hs-violet:#7C5CE7;--hs-violet-d:rgba(124,92,231,0.20);
   --hs-text:#F2EEFF;--hs-dim:#8B85A8;--hs-mid:#A9A3C8;
-  --hs-border:rgba(0,255,136,0.18);
-  --hs-glow:rgba(0,255,136,0.30);
-  --hs-glow-soft:rgba(0,255,136,0.22);
+  --hs-border:rgba(155,124,255,0.18);
+  --hs-glow:rgba(155,124,255,0.30);
+  --hs-glow-soft:rgba(124,92,231,0.22);
   --hs-danger:#FB7185;
   --hs-success:#34D399;--hs-success-d:rgba(52,211,153,0.12);
   --hs-warn:#FBBF24;--hs-warn-d:rgba(251,191,36,0.12);
 }
 [data-theme="light"]{
   --hs-bg:#F5F3FA;--hs-bg2:#EDE9F5;--hs-bg3:#E6E1F0;
-  --hs-card:rgba(255,255,255,0.92);--hs-card-in:rgba(0,255,136,0.04);
-  --hs-primary:#00FF88;--hs-primary2:#1DE9B8;--hs-primary-d:rgba(0,255,136,0.10);
-  --hs-secondary:#FF077A;--hs-secondary2:#FF6B6B;--hs-secondary-d:rgba(255,7,122,0.14);
+  --hs-card:rgba(255,255,255,0.92);--hs-card-in:rgba(124,92,231,0.04);
+  --hs-purple:#6D3FF5;--hs-purple2:#8B6AFF;--hs-purple-d:rgba(109,63,245,0.10);
+  --hs-violet:#5A38D0;--hs-violet-d:rgba(90,56,208,0.14);
   --hs-text:#14111C;--hs-dim:#6B6880;--hs-mid:#4A4760;
-  --hs-border:rgba(0,255,136,0.16);
-  --hs-glow:rgba(0,255,136,0.22);--hs-glow-soft:rgba(0,255,136,0.16);
+  --hs-border:rgba(109,63,245,0.16);
+  --hs-glow:rgba(109,63,245,0.22);--hs-glow-soft:rgba(90,56,208,0.16);
   --hs-success:#059669;--hs-warn:#D97706;
 }
 html,body{height:100%;overflow-x:hidden}
 body{
-  font-family: Iran Sans,system-ui,sans-serif;background:var(--hs-bg);color:var(--hs-text);
+  font-family:'Inter',system-ui,sans-serif;background:var(--hs-bg);color:var(--hs-text);
   display:flex;align-items:center;justify-content:center;padding:20px;position:relative;
   transition:background .5s ease,color .5s ease;min-height:100vh}
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
@@ -140,7 +140,7 @@ input:focus~.ic-lock{color:var(--hs-purple2);animation:wiggle .4s ease}
 .code-inp{
   padding:13px 14px !important;font-size:19px !important;letter-spacing:7px;text-indent:7px;text-align:center;
   font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:700;direction:ltr}
-.code-inp::placeholder{letter-spacing:3px;text-indent:0;font-size:13px;font-family: Iran Sans,system-ui,sans-serif;font-weight:400}
+.code-inp::placeholder{letter-spacing:3px;text-indent:0;font-size:13px;font-family:'Inter',system-ui,sans-serif;font-weight:400}
 
 .err{display:none;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:11px;padding:11px 14px;margin-bottom:18px;font-size:12.5px;color:var(--hs-danger);align-items:center;gap:8px;animation:shake .35s}
 .err.show{display:flex}
@@ -715,19 +715,19 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Iran+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" async onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js'"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --hs-bg:#0C0A14;--hs-bg2:#13101E;--hs-bg3:#1A1626;
-  --hs-card:rgba(22,18,34,0.7);--hs-card-solid:#161222;--hs-card-in:rgba(0,255,136,0.03);
-  --hs-primary:#00FF88;--hs-primary2:#1DE9B8;--hs-primary-d:rgba(0,255,136,0.14);
-  --hs-secondary:#FF077A;--hs-secondary2:#FF6B6B;--hs-secondary-d:rgba(255,7,122,0.14);
+  --hs-card:rgba(22,18,34,0.7);--hs-card-solid:#161222;--hs-card-in:rgba(255,255,255,0.03);
+  --hs-purple:#9B7CFF;--hs-purple2:#B794FF;--hs-purple-d:rgba(155,124,255,0.14);
+  --hs-violet:#7C5CE7;--hs-violet-d:rgba(124,92,231,0.20);
   --hs-text:#F2EEFF;--hs-dim:#8B85A8;--hs-mid:#A9A3C8;
-  --hs-border:rgba(0,255,136,0.18);--hs-border2:rgba(0,255,136,0.08);
-  --hs-glow:rgba(0,255,136,0.30);--hs-glow-soft:rgba(0,255,136,0.22);
+  --hs-border:rgba(155,124,255,0.18);--hs-border2:rgba(155,124,255,0.08);
+  --hs-glow:rgba(155,124,255,0.30);--hs-glow-soft:rgba(124,92,231,0.22);
   --hs-success:#34D399;--hs-success-d:rgba(52,211,153,0.12);
   --hs-warn:#FBBF24;--hs-warn-d:rgba(251,191,36,0.12);
   --hs-danger:#FB7185;--hs-danger-d:rgba(251,113,133,0.12);
@@ -736,15 +736,15 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 }
 [data-theme="light"]{
   --hs-bg:#F5F3FA;--hs-bg2:#EDE9F5;--hs-bg3:#E6E1F0;
-  --hs-card:rgba(255,255,255,0.85);--hs-card-solid:#FFFFFF;--hs-card-in:rgba(0,255,136,0.04);
-  --hs-primary:#00FF88;--hs-primary2:#1DE9B8;--hs-primary-d:rgba(0,255,136,0.10);
-  --hs-secondary:#FF077A;--hs-secondary2:#FF6B6B;--hs-secondary-d:rgba(255,7,122,0.14);
+  --hs-card:rgba(255,255,255,0.85);--hs-card-solid:#FFFFFF;--hs-card-in:rgba(124,92,231,0.04);
+  --hs-purple:#6D3FF5;--hs-purple2:#8B6AFF;--hs-purple-d:rgba(109,63,245,0.10);
+  --hs-violet:#5A38D0;--hs-violet-d:rgba(90,56,208,0.14);
   --hs-text:#14111C;--hs-dim:#6B6880;--hs-mid:#4A4760;
-  --hs-border:rgba(0,255,136,0.16);--hs-border2:rgba(0,255,136,0.08);
-  --hs-glow:rgba(0,255,136,0.22);--hs-glow-soft:rgba(0,255,136,0.16);
+  --hs-border:rgba(109,63,245,0.16);--hs-border2:rgba(109,63,245,0.08);
+  --hs-glow:rgba(109,63,245,0.22);--hs-glow-soft:rgba(90,56,208,0.16);
 }
 html,body{height:100%}
-body{font-family: Iran Sans,system-ui,sans-serif;background:var(--hs-bg);color:var(--hs-text);min-height:100vh;font-size:14px;line-height:1.5;transition:background .3s,color .3s}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--hs-bg);color:var(--hs-text);min-height:100vh;font-size:14px;line-height:1.5;transition:background .3s,color .3s}
 .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
 a{color:inherit;text-decoration:none}
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -2152,12 +2152,12 @@ def get_public_page_html(uuid_key: str) -> str:
 <title>HS Panel · اشتراک عمومی</title>
 <meta name="theme-color" content="#0C0A14">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0A14'/%3E%3Cpath d='M8 16 L13 21 L24 10' stroke='%239B7CFF' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Iran+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" media="print" onload="this.media='all'">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--hs-bg:#0C0A14;--hs-card:rgba(22,18,34,0.7);--hs-primary:#00FF88;--hs-text:#F2EEFF;--hs-dim:#8B85A8;--hs-mid:#A9A3C8;--hs-border:rgba(0,255,136,0.18);--hs-secondary:#FF077A}
-body{font-family: Iran Sans,sans-serif;background:var(--hs-bg);color:var(--hs-text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow-x:hidden}
+:root{--hs-bg:#0C0A14;--hs-card:rgba(22,18,34,0.7);--hs-purple:#9B7CFF;--hs-text:#F2EEFF;--hs-dim:#8B85A8;--hs-mid:#A9A3C8;--hs-border:rgba(155,124,255,0.18);--hs-violet:#7C5CE7}
+body{font-family:'Inter',sans-serif;background:var(--hs-bg);color:var(--hs-text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 50% 40% at 20% 10%,rgba(124,92,231,.18),transparent 70%),radial-gradient(ellipse 50% 40% at 80% 90%,rgba(155,124,255,.18),transparent 70%);pointer-events:none}
 .card{background:var(--hs-card);backdrop-filter:blur(30px);border:1px solid var(--hs-border);border-radius:20px;padding:32px;max-width:520px;width:100%;position:relative;z-index:1;box-shadow:0 30px 80px -20px rgba(0,0,0,.5)}
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}

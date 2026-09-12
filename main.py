@@ -437,25 +437,14 @@ def hash_password(pw: str) -> str:
     return hashlib.sha256(f"{pw}{CONFIG['secret']}".encode()).hexdigest()
 
 AUTH = {"password_hash": hash_password(os.environ.get("ADMIN_PASSWORD", "123456"))}
-SESSIONS: dict = {}          # token -> {"email": str, "is_admin": bool, "exp": float}
+SESSIONS: dict = {}          # token -> {"username": str, "is_admin": bool, "exp": float}
 SESSIONS_LOCK = asyncio.Lock()
 
-# ── Multi-user (email + verification code) ────────────────────────────────────
-# USERS: ایمیل -> {"password_hash": str, "is_admin": bool, "created_at": str, "email_verified": True}
-# VERIFICATION_CODES: email -> {"code": str, "expires_at": float, "purpose": "register"|"login"}
-# PASSWORD_RESET: email -> {"code": str, "expires_at": float}
+# ── Multi-user (username + password) ──────────────────────────────────────────
+# USERS: username -> {"password_hash": str, "is_admin": bool, "created_at": str}
+# No email field - users log in with username/password directly
 USERS: dict = {}
 USERS_LOCK = asyncio.Lock()
-VERIFICATION_CODES: dict = {}
-VERIFICATION_LOCK = asyncio.Lock()
-PASSWORD_RESET: dict = {}
-PASSWORD_RESET_LOCK = asyncio.Lock()
-
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "").strip().lower() or "admin@hspanel.local"
-
-# کد تایید ۶ رقمی، ۱۰ دقیقه اعتبار
-VERIFICATION_TTL = 600
-VERIFICATION_CODE_LEN = 6
 
 # ── SMTP (ارسال واقعی ایمیل) ──────────────────────────────────────────────────
 # تنظیمات SMTP هم از env خوانده می‌شود (اولویت بالاتر) هم از استیت ذخیره‌شده
