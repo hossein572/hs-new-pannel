@@ -26,6 +26,8 @@ from main import (
     logger,
     is_link_allowed,
     now_ir,
+    link_owner,
+    bump_user_traffic,
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -147,6 +149,8 @@ async def check_and_use(uid: str, n: int) -> bool:
         link["used_bytes"] += n
         stats["total_bytes"] += n
         hourly_traffic[now_ir().strftime("%H:00")] += n
+        owner = link_owner(uid)
+    bump_user_traffic(owner, n)
     return True
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):

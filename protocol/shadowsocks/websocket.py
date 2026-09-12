@@ -19,6 +19,7 @@ from main import (
     logger,
     save_state,
     log_activity,
+    link_owner,
 )
 from protocol.vless.vless import check_and_use, _QuotaGate
 from protocol.shadowsocks.shadowsocks import (
@@ -147,7 +148,7 @@ async def shadowsocks_ws_tunnel(ws: WebSocket):
             "bytes": 0,
         }
         logger.info(f"✅ SS-WS [{conn_id}] uuid={uuid[:8]}… ip={ip} total={len(connections)}")
-        log_activity("connection", f"اتصال Shadowsocks جدید از {ip} (کانفیگ {link.get('label','?')})", "info")
+        log_activity("connection", f"اتصال Shadowsocks جدید از {ip} (کانفیگ {link.get('label','?')})", "info", username=link_owner(uuid))
 
         # اولین chunk رمزگشایی‌شده شامل هدر SOCKS5-like آدرس مقصد + احتمالاً payload اولیه است
         first_payload = chunks[0]

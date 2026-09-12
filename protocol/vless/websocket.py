@@ -20,6 +20,7 @@ from main import (
     is_link_allowed,
     save_state,
     log_activity,
+    link_owner,
 )
 from protocol.vless.vless import (
     _ws_client_ip,
@@ -52,7 +53,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         "bytes": 0,
     }
     logger.info(f"✅ WS [{conn_id}] uuid={uuid[:8]}… ip={ip} total={len(connections)}")
-    log_activity("connection", f"اتصال جدید از {ip} (کانفیگ {link.get('label','?')})", "info")
+    log_activity("connection", f"اتصال جدید از {ip} (کانفیگ {link.get('label','?')})", "info", username=link_owner(uuid))
     writer = None
 
     try:
