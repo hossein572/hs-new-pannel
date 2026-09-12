@@ -1,8 +1,8 @@
-# websocket.py
-# ══════════════════════════════════════════════════════════════════════════════
-# Shadowsocks — اندپوینت WebSocket (/ss-ws)
-# رمزنگاری AEAD، پارس هدر و توابع کمکی در shadowsocks.py (هسته‌ی مشترک) هستند.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
 
 import asyncio
 import secrets
@@ -150,7 +150,7 @@ async def shadowsocks_ws_tunnel(ws: WebSocket):
         logger.info(f"✅ SS-WS [{conn_id}] uuid={uuid[:8]}… ip={ip} total={len(connections)}")
         log_activity("connection", f"اتصال Shadowsocks جدید از {ip} (کانفیگ {link.get('label','?')})", "info", username=link_owner(uuid))
 
-        # اولین chunk رمزگشایی‌شده شامل هدر SOCKS5-like آدرس مقصد + احتمالاً payload اولیه است
+
         first_payload = chunks[0]
         address, port, hlen = parse_socks5_addr(first_payload)
         initial_data = first_payload[hlen:]

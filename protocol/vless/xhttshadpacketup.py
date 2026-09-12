@@ -1,8 +1,8 @@
-# xhttshadpacketup.py
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP — آپلینک packet-up (با seq) برای VLESS / Trojan
-# منطق اصلی (session, quota) در xhttp_core.py قرار دارد.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
 
 import time
 import traceback
@@ -25,7 +25,7 @@ from protocol.vless.xhttp_core import (
 router = APIRouter()
 
 
-# ══════════════════════════════ PACKET-UP (آپلینک با seq) ══════════════════════════════
+
 @router.post("/xhttp-siz10/packet-up/{uuid}/{session_id}/{seq}")
 async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Request):
     ensure_reaper()
@@ -37,21 +37,21 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
     try:
         body = await request.body()
     except ClientDisconnect:
-        # کلاینت قبل از تکمیل ارسال بدنه قطع کرد؛ این یک POST رو نادیده بگیر،
-        # ولی session/TCP رو دست‌نخورده نگه دار.
+
+
         logger.info(f"XHTTP[packet-up] [{session_id[:8]}] client disconnected mid-body (seq={seq}), session kept alive")
         return {"ok": True, "aborted": True}
 
     if not body:
         return {"ok": True}
 
-    # قبلاً هر پکت جدا await check_and_use() می‌کرد => هر POST کوچیک قفل
-    # سراسری LINKS_LOCK رو می‌گرفت. چون packet-up ذاتاً پکت‌های کوچیک و زیاد
-    # می‌فرسته (برخلاف stream-up که یک POST پیوسته‌ست)، این یعنی صدها await
-    # روی یک لاک مشترک به‌ازای هر ثانیه -> همون چیزی که سرعت آپلود رو به چند
-    # صد kbps محدود می‌کرد. الان از همون _QuotaGate تطبیقی که stream-up
-    # استفاده می‌کنه بهره می‌بریم: batch میشه و فقط هر چند صد KB یا هر 250ms
-    # یک‌بار واقعاً await check_and_use می‌شه.
+
+
+
+
+
+
+
     gate = sess.get("gate")
     if gate is None:
         gate = _QuotaGate(uuid)

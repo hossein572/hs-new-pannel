@@ -1,17 +1,17 @@
-# telemt.py
-# ══════════════════════════════════════════════════════════════════════════════
-# بک‌اند جدید MTProto — به‌جای mtg (که در حالت تبلیغ/ad-tag به قول خودِ سازنده‌ش
-# «پیچیده‌ترین و باگ‌دارترین بخش کل ابزاره»)، از telemt استفاده می‌کنیم:
-# https://github.com/telemt/telemt — پروژه‌ای که خودِ مستندات mtg هم برای adtag
-# پیشنهادش می‌ده.
-#
-# تفاوت معماری مهم: برخلاف mtg (یک پروسه به‌ازای هر کانفیگ/پورت)، telemt یک
-# پروسه‌ی مشترک داره که چند «کاربر» (هرکدوم یک سکرت مستقل) روی یک پورت واحد
-# سرویس می‌ده. مزیت بزرگش برای ما: اضافه/حذف‌کردن کاربر یا تغییر ad_tag فقط
-# نیاز به بازنویسی فایل کانفیگ + SIGHUP (ری‌لود نرم) داره — نه ری‌استارت
-# کامل پروسه. یعنی پورت هیچ‌وقت عوض نمی‌شه و دیگه نیازی به هماهنگ نگه‌داشتن
-# TCP Proxy روی Railway با پورت جدید نیست (کل دسته‌باگی که با mtg داشتیم).
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import os
@@ -35,8 +35,8 @@ TELEMT_BIN = TELEMT_DIR / "telemt"
 CONFIG_PATH = TELEMT_DIR / "config.toml"
 
 DEFAULT_TLS_DOMAIN = "www.cloudflare.com"
-# پورت مشترک ثابت که همه‌ی کاربرهای MTProto روش سرویس می‌گیرن — چون telemt
-# تک‌پورته، فقط یک TCP Proxy روی Railway برای همیشه لازمه.
+
+
 TELEMT_PORT = int(os.environ.get("TELEMT_PORT", 8477))
 API_PORT = int(os.environ.get("TELEMT_API_PORT", 8478))
 API_BASE = f"http://127.0.0.1:{API_PORT}"
@@ -119,13 +119,12 @@ async def ensure_binary() -> bool:
 
 
 def generate_secret() -> str:
-    """سکرت خام ۳۲ کاراکتری هگز — فرمت بومی telemt (بدون پیشوند ee/dd)."""
+
     return secrets.token_hex(16)
 
 
 def client_secret(raw_secret: str, domain: str = DEFAULT_TLS_DOMAIN) -> str:
-    """سکرتی که باید در لینک/کلاینت تلگرام استفاده بشه — چون حالت TLS فعاله،
-    فرمتش دقیقاً مثل FakeTLS معمولیه: ee + سکرت خام + هگزِ دامنه."""
+
     return "ee" + raw_secret + domain.encode().hex()
 
 
@@ -135,9 +134,7 @@ def _escape_toml_str(s: str) -> str:
 
 def write_config(users: dict, ad_tags: dict, port: int = TELEMT_PORT,
                   domain: str = DEFAULT_TLS_DOMAIN) -> Path:
-    """کانفیگ پایه (بدون دست‌کاری مستقیم [access.users] بعد از این نقطه — کاربرها
-    از این به بعد از طریق Control API واقعیِ telemt (/v1/users) مدیریت می‌شن، نه
-    بازنویسی فایل؛ اینجا فقط برای bootstrap اولیه لازمه)."""
+
     TELEMT_DIR.mkdir(parents=True, exist_ok=True)
 
     has_any_tag = any(ad_tags.get(uid) for uid in users)
@@ -192,7 +189,7 @@ async def _stream_output(proc: asyncio.subprocess.Process):
             if not line:
                 break
             text = line.decode("utf-8", errors="ignore").rstrip()
-            # حذف کدهای رنگ ANSI برای خوانایی لاگ
+
             import re as _re
             text = _re.sub(r"\x1b\[[0-9;]*m", "", text)
             if not text:
@@ -218,7 +215,7 @@ def is_running() -> bool:
 
 
 async def start():
-    """پروسه‌ی telemt رو با کانفیگ فعلی (که قبلش با write_config نوشته شده) بالا می‌آره."""
+
     global _proc, _log_task
     async with _lock:
         if is_running():
@@ -330,14 +327,7 @@ async def api_delete_user(uid: str):
 
 
 async def api_set_ad_tag(uid: str, ad_tag: Optional[str]):
-    """تگ تبلیغ رو برای یک کاربر خاص، بدون هیچ قطعی سرویس، از طریق API تنظیم می‌کنه.
-    نکته‌ی مهمی که با تست مستقیم پیدا شد: اسم فیلد صحیح توی API واقعاً
-    "user_ad_tag" هست نه "ad_tag" — با اسم اشتباه، درخواست 200 OK برمی‌گرده
-    (بدون خطا) ولی مقدار اصلاً اعمال نمی‌شه و همیشه null می‌مونه؛ دقیقاً همین
-    باعث می‌شد تبلیغ هیچ‌وقت واقعاً فعال نشه.
 
-    نکته: اگه ad_tag=None باشه (user بدون تبلیغ)، درخواست رو میزنیم تا tag رو
-    پاک کنیم، ولی runtime error نمیندازیم اگه applied هم None بود."""
     async with httpx.AsyncClient() as client:
         r = await client.patch(
             f"{API_BASE}/v1/users/{uid}",
@@ -361,8 +351,7 @@ async def api_set_ad_tag(uid: str, ad_tag: Optional[str]):
 
 
 def _read_config_middle_proxy() -> Optional[bool]:
-    """مقدار فعلی use_middle_proxy رو از فایل کانفیگ روی دیسک میخونه.
-    اگه فایل نبود یا parse نشد، None برمیگردونه."""
+
     try:
         if not CONFIG_PATH.exists():
             return None
@@ -377,14 +366,7 @@ def _read_config_middle_proxy() -> Optional[bool]:
 
 
 async def _restart_with_config(users: dict, ad_tags: dict, domain: str) -> None:
-    """پروسه رو stop میکنه، کانفیگ جدید مینویسه و دوباره start میکنه.
-    وقتی use_middle_proxy باید از false به true (یا برعکس) تغییر کنه، چاره‌ای
-    جز restart کامل نیست چون این یه config-level setting هست نه API-level.
 
-    مهم: بعد از restart، کاربرها و ad_tag‌ها رو دوباره از طریق Control API
-    اعمال می‌کنیم — چون telemt ممکنه [access.user_ad_tags] رو از فایل کانفیگ
-    به‌صورت خودکار در runtime اعمال نکنه (مستندات telemt تأکید داره که مدیریت
-    باید از طریق API باشه، نه مستقیم از config)."""
     _log("⚙️ restart کامل telemt برای اعمال تغییر use_middle_proxy شروع شد...")
     await stop()
     await asyncio.sleep(0.5)
@@ -394,9 +376,9 @@ async def _restart_with_config(users: dict, ad_tags: dict, domain: str) -> None:
         _log("Control API telemt آماده نشد بعد از restart (timeout)", "warning")
         return
 
-    # بعد از restart، همه‌ی کاربرها و ad_tag‌هاشون رو از طریق API اعمال می‌کنیم.
-    # این مرحله حیاتیه چون config file به‌تنهایی کافی نیست — telemt ممکنه
-    # user_ad_tags رو از config در startup نخونه.
+
+
+
     for uid, secret in users.items():
         try:
             await api_create_user(uid, secret)
@@ -413,17 +395,8 @@ async def _restart_with_config(users: dict, ad_tags: dict, domain: str) -> None:
 
 
 async def sync(users: dict, ad_tags: dict, domain: str = DEFAULT_TLS_DOMAIN):
-    """نقطه‌ی ورود اصلی برای main.py — طبق مستندات رسمی telemt، مدیریت کاربرها
-    باید از طریق Control API انجام بشه، نه بازنویسیِ مستقیم فایل کانفیگ:
-      - اگه پروسه اصلاً بالا نیست: کانفیگ اولیه (bootstrap) رو با همون کاربرها
-        می‌نویسه و پروسه رو یک‌بار بالا می‌آره.
-      - اگه از قبل بالاست: با API کاربرهای جدید/حذف‌شده رو sync میکنه.
-      - مهم: اگه use_middle_proxy باید تغییر کنه (مثلاً اولین ad_tag ست شد)،
-        telemt رو restart میکنه — چون این تنظیم config-level هست و از API قابل
-        تغییر نیست. کانفیگ فایل هم همیشه آپدیت میشه تا بعد از crash/deploy
-        درست باشه.
-    """
-    # همیشه کانفیگ فایل رو آپدیت کن — برای survival از crash/restart
+
+
     has_any_tag = any(ad_tags.get(uid) for uid in users)
 
     if not is_running():
@@ -433,11 +406,11 @@ async def sync(users: dict, ad_tags: dict, domain: str = DEFAULT_TLS_DOMAIN):
             _log("Control API telemt آماده نشد (timeout)", "warning")
         return
 
-    # پروسه از قبل روشنه
-    # چک کن آیا use_middle_proxy باید تغییر کنه
+
+
     current_middle = _read_config_middle_proxy()
     if current_middle != has_any_tag:
-        # config-level change — restart اجباریه
+
         _log(
             f"⚠️ use_middle_proxy باید از {current_middle} به {has_any_tag} تغییر کنه "
             f"— restart کامل telemt لازمه"
@@ -445,7 +418,7 @@ async def sync(users: dict, ad_tags: dict, domain: str = DEFAULT_TLS_DOMAIN):
         await _restart_with_config(users, ad_tags, domain)
         return
 
-    # use_middle_proxy عوض نشده — فقط config فایل رو آپدیت کن و از API استفاده کن
+
     write_config(users, ad_tags, port=TELEMT_PORT, domain=domain)
 
     try:

@@ -1,18 +1,18 @@
-# xhttpstreamon.py
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP — دانلینک (GET پیوسته که داده‌های سرور مقصد رو به کلاینت stream می‌کنه)
-# برای VLESS. منطق اصلی (session, quota, adaptive flow) در xhttp_core.py قرار
-# دارد؛ این فایل فقط route رو تعریف می‌کنه و از _downstream_gen مصرف می‌کنه.
-#
-# برای کمترین تاخیر (مناسب پلتفرم‌هایی مثل اینستاگرام/یوتیوب/تیک‌تاک با حجم
-# بالا و تلگرام با حجم کم و پیام‌های کوچیک):
-#   - بدون هیچ بافرینگ اضافه در لایه‌ی HTTP (headers از _resp_headers که
-#     x-accel-buffering: no و cache-control: no-cache/no-store داره)
-#   - StreamingResponse مستقیم از async generator که هر chunk رو به محض
-#     رسیدن از TCP مقصد yield می‌کنه (بدون جمع‌کردن/batch کردن اضافه)
-#   - همون _AdaptiveFlow/_QuotaGate که روی مسیر آپلود هست، اینجا لازم نیست
-#     چون این مسیر فقط خواندن از صف داخلی (down_q) هست، نه سوکت خام
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -30,7 +30,7 @@ from protocol.vless.xhttp_core import (
 router = APIRouter()
 
 
-# ══════════════════════════════ STREAM-ONE (GET پیوسته‌ی دانلینک) ══════════════════════════════
+
 @router.get("/xhttp-siz10/{mode}/{uuid}/{session_id}")
 async def xhttp_downlink(mode: str, uuid: str, session_id: str, request: Request):
     ensure_reaper()

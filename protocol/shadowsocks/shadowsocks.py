@@ -1,4 +1,4 @@
-# shadowsocks.py
+
 import asyncio
 import hashlib
 import hmac
@@ -54,7 +54,7 @@ def _tune_socket(writer: asyncio.StreamWriter):
         logger.warning(f"SS _tune_socket failed: {e}")
 
 
-# ── HKDF-SHA1 برای مشتق‌سازی subkey از master key + salt (طبق spec شادوساکس) ──
+
 def _hkdf_sha1(key: bytes, salt: bytes, info: bytes, length: int) -> bytes:
     prk = hmac.HMAC(salt, key, hashlib.sha1).digest()
     okm, t, i = b"", b"", 1
@@ -66,7 +66,7 @@ def _hkdf_sha1(key: bytes, salt: bytes, info: bytes, length: int) -> bytes:
 
 
 def derive_key(password: str, key_len: int) -> bytes:
-    """EVP_BytesToKey سازگار با shadowsocks (مثل قدیم) برای گرفتن master key از پسورد."""
+
     d = d_prev = b""
     while len(d) < key_len:
         d_prev = hashlib.md5(d_prev + password.encode()).digest()
@@ -79,11 +79,7 @@ def _subkey(master_key: bytes, salt: bytes, key_len: int) -> bytes:
 
 
 class _AEADStream:
-    """
-    رمزگشایی/رمزنگاری فریم‌های AEAD SS به‌صورت stream:
-      chunk = len(2B, encrypted+tag) + payload(encrypted+tag)
-    nonce به‌صورت little-endian counter افزایش پیدا می‌کند (طبق spec).
-    """
+
     def __init__(self, master_key: bytes, cipher_name: str):
         info = CIPHERS[cipher_name]
         self.key_len = info["key_len"]
@@ -106,7 +102,7 @@ class _AEADStream:
     def _nonce_bytes(self, counter: int) -> bytes:
         return counter.to_bytes(self.nonce_len, "little")
 
-    # ---------- encrypt (server -> client) ----------
+
     def encrypt_chunk(self, payload: bytes) -> bytes:
         out = bytearray()
         if not self.enc_salt_sent:
@@ -120,7 +116,7 @@ class _AEADStream:
         out += enc_len + enc_payload
         return bytes(out)
 
-    # ---------- decrypt (client -> server), استریمی ----------
+
     def feed(self, data: bytes):
         self._buf += data
 
@@ -136,7 +132,7 @@ class _AEADStream:
         return True
 
     def try_decrypt_chunks(self):
-        """generator که هر chunk کامل رمزگشایی‌شده رو yield می‌کند."""
+
         if not self._ensure_dec_key():
             return
         tag_len = 16
@@ -167,7 +163,7 @@ class _AEADStream:
 
 
 def parse_socks5_addr(buf: bytes):
-    """ATYP(1) + ADDR + PORT(2) -> (address, port, consumed_len)"""
+
     if len(buf) < 2:
         raise ValueError("too short")
     atyp = buf[0]
@@ -192,8 +188,8 @@ def parse_socks5_addr(buf: bytes):
     return address, port, pos
 
 
-# ── تشخیص لینک از روی رمزنگاری موفق (چون SS پسورد را در URL/هدر نمی‌فرستد،
-#    باید روی همه‌ی لینک‌های shadowsocks فعال امتحان کنیم تا سالت/تگ جور دربیاید) ──
+
+
 async def _find_matching_ss_link(first_bytes: bytes):
     async with LINKS_LOCK:
         candidates = [
@@ -217,11 +213,11 @@ async def _find_matching_ss_link(first_bytes: bytes):
     return None, None, None
 
 
-# shadowsocks_ws_tunnel و توابع relay آن به protocol/shadowsocks/websocket.py منتقل شدند.
+
 
 
 def generate_ss_link(host: str, port: int, cipher: str, password: str, remark: str) -> str:
-    """ss://base64(method:password)@host:port?plugin=...#remark — با پلاگین v2ray-plugin برای WS+TLS"""
+
     import base64
     from urllib.parse import quote
 

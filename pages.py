@@ -694,16 +694,13 @@ tbody tr:hover{background:var(--hs-primary-d)}
       <div class="sb-section-label">اصلی</div>
       <a class="sb-nav-item active" data-page="dashboard" onclick="nav('dashboard')"><i class="ti ti-layout-dashboard"></i><span class="sb-text">داشبورد</span></a>
       <a class="sb-nav-item" data-page="links" onclick="nav('links')"><i class="ti ti-link"></i><span class="sb-text">کانفیگ‌ها</span><span class="sb-badge" id="bdg-links">0</span></a>
-      <a class="sb-nav-item" data-page="subs" onclick="nav('subs')"><i class="ti ti-folder"></i><span class="sb-text">گروه‌ها</span><span class="sb-badge" id="bdg-subs">0</span></a>
       <a class="sb-nav-item" data-page="connections" onclick="nav('connections')"><i class="ti ti-activity"></i><span class="sb-text">اتصالات</span></a>
       <div class="sb-section-label">سرویس‌ها</div>
-      <a class="sb-nav-item" data-page="gaming" onclick="nav('gaming')"><i class="ti ti-device-gamepad-2"></i><span class="sb-text">کانفیگ گیمینگ</span></a>
-      <a class="sb-nav-item" data-page="socks" onclick="nav('socks')"><i class="ti ti-shield-lock"></i><span class="sb-text">SOCKS5</span></a>
-      <a class="sb-nav-item" data-page="vps" onclick="nav('vps')"><i class="ti ti-server-cog"></i><span class="sb-text">مدیریت VPS</span><span class="sb-badge" style="background:var(--hs-glow);color:#001a08">جدید</span></a>
+      <a class="sb-nav-item" data-page="gaming" onclick="nav('gaming')"><i class="ti ti-server-cog"></i><span class="sb-text">گیمینگ / VPS</span><span class="sb-badge" id="bdg-vps" style="display:none">0</span></a>
+      <a class="sb-nav-item" data-page="socks" onclick="nav('socks')"><i class="ti ti-shield-lock"></i><span class="sb-text">SOCKS5</span><span class="sb-badge" id="bdg-socks" style="display:none">0</span></a>
       <div class="sb-section-label">ابزارها</div>
       <a class="sb-nav-item" data-page="nodes" onclick="nav('nodes')"><i class="ti ti-server-2"></i><span class="sb-text">نودها</span></a>
       <a class="sb-nav-item" data-page="telegram" onclick="nav('telegram')"><i class="ti ti-brand-telegram"></i><span class="sb-text">ربات تلگرام</span></a>
-      <a class="sb-nav-item" data-page="backups" onclick="nav('backups')"><i class="ti ti-database"></i><span class="sb-text">بکاپ / ریستور</span></a>
       <div class="sb-section-label">سیستم</div>
       <a class="sb-nav-item" data-page="settings" onclick="nav('settings')"><i class="ti ti-settings"></i><span class="sb-text">تنظیمات</span></a>
       <a class="sb-nav-item" data-page="update" onclick="nav('update')"><i class="ti ti-cloud-download"></i><span class="sb-text">بروزرسانی</span></a>
@@ -792,51 +789,38 @@ tbody tr:hover{background:var(--hs-primary-d)}
           </div>
         </div>
       </div>
-      <div class="page" id="page-subs">
+      
+            <div class="page" id="page-connections">
         <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-folder"></i> گروه‌های اشتراک</h1><div class="page-sub">گروه‌بندی و اشتراک‌گذاری کانفیگ‌ها</div></div>
-          <div class="page-actions"><button class="btn btn-primary btn-sm" onclick="showToast('به‌زودی','info')"><i class="ti ti-plus"></i> گروه جدید</button></div>
-        </div>
-        <div class="card"><div class="empty"><i class="ti ti-folder-open"></i><div class="empty-title">گروه‌ها</div><div class="empty-sub">این بخش در حال توسعه است</div></div></div>
-      </div>
-      <div class="page" id="page-connections">
-        <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-activity"></i> اتصالات فعال</h1><div class="page-sub">مانیتورینگ لحظه‌ای اتصالات</div></div>
-        </div>
-        <div class="card"><div class="empty"><i class="ti ti-pulse"></i><div class="empty-title">اتصالات</div><div class="empty-sub">در حال اتصال...</div></div></div>
-      </div>
-      <div class="page" id="page-gaming">
-        <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-device-gamepad-2"></i> کانفیگ گیمینگ</h1><div class="page-sub">ساخت کانفیگ اختصاصی بازی با تنظیمات کامل</div></div>
+          <div><h1 class="page-title"><i class="ti ti-activity"></i> اتصالات فعال</h1><div class="page-sub">مانیتورینگ لحظه‌ای اتصالات به کانفیگ‌های شما</div></div>
           <div class="page-actions">
-            <button class="btn btn-outline btn-sm" onclick="loadGamingList()"><i class="ti ti-refresh"></i> بروزرسانی</button>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-gaming')"><i class="ti ti-plus"></i> کانفیگ گیمینگ جدید</button>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--hs-mid);cursor:pointer"><input type="checkbox" id="conn-auto" checked onchange="toggleConnAuto()" style="accent-color:var(--hs-primary)"> به‌روزرسانی خودکار (۵ ثانیه)</label>
+            <button class="btn btn-outline btn-sm" onclick="loadConnections()"><i class="ti ti-refresh"></i> بروزرسانی</button>
           </div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card"><div class="stat-icon"><i class="ti ti-world"></i></div><div class="stat-label">آی‌پی متصل</div><div class="stat-value" id="stc-ips">0</div><div class="stat-trend">لحظه‌ای</div></div>
+          <div class="stat-card"><div class="stat-icon green"><i class="ti ti-plug-connected"></i></div><div class="stat-label">اتصال فعال</div><div class="stat-value" id="stc-ses">0</div><div class="stat-trend">لحظه‌ای</div></div>
+          <div class="stat-card"><div class="stat-icon amber"><i class="ti ti-arrows-exchange"></i></div><div class="stat-label">ترافیک اتصالات</div><div class="stat-value" id="stc-bytes">0 B</div><div class="stat-trend">مجموع</div></div>
         </div>
         <div class="tbl-wrap">
           <div class="tbl-head">
-            <div class="tbl-title"><i class="ti ti-device-gamepad-2"></i> لیست کانفیگ‌های گیمینگ</div>
+            <div class="tbl-title"><i class="ti ti-list"></i> لیست اتصالات</div>
           </div>
           <div class="tbl-scroll">
-            <table id="gaming-tbl">
-              <thead><tr><th>نام</th><th>بازی</th><th>پروتکل</th><th>کشور</th><th>پینگ</th><th>پریست</th><th>MTU</th><th>عملیات</th></tr></thead>
-              <tbody id="gaming-tbody"><tr><td colspan="8" class="empty">در حال بارگذاری...</td></tr></tbody>
+            <table id="conn-tbl">
+              <thead><tr><th>IP</th><th>کانفیگ</th><th>پروتکل</th><th>اتصال</th><th>ترافیک</th><th>اولین اتصال</th><th>آخرین فعالیت</th></tr></thead>
+              <tbody><tr><td colspan="7" class="empty">در حال بارگذاری...</td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
-      <div class="page" id="page-socks">
+            <div class="page" id="page-gaming">
         <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-shield-lock"></i> SOCKS5 Proxy</h1><div class="page-sub">پروکسی SOCKS5 با محدودیت حجم و تعداد اتصال</div></div>
-          <div class="page-actions" id="socks-actions"></div>
-        </div>
-        <div class="card" id="socks-card"><div class="empty"><i class="ti ti-loader"></i><div class="empty-sub">در حال بارگذاری...</div></div></div>
-      </div>
-      <div class="page" id="page-vps">
-        <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-server-cog"></i> مدیریت سرورهای VPS</h1><div class="page-sub">ثبت و مدیریت سرورهای VPS و کانفیگ‌های اختصاصی</div></div>
+          <div><h1 class="page-title"><i class="ti ti-server-cog"></i> گیمینگ / VPS</h1><div class="page-sub">ثبت سرورهای VPS و ساخت کانفیگ‌های Xray-SOCKS برای هر سرور — سرورها دائمی ذخیره می‌شوند و با خروج از پنل پاک نمی‌شوند</div></div>
           <div class="page-actions">
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-vps')"><i class="ti ti-plus"></i> ثبت سرور جدید</button>
+            <button class="btn btn-outline btn-sm" onclick="loadVpsServers()"><i class="ti ti-refresh"></i> بروزرسانی</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddVpsModal()"><i class="ti ti-plus"></i> ثبت سرور جدید</button>
           </div>
         </div>
         <div id="vps-servers-list" class="server-grid"></div>
@@ -849,13 +833,41 @@ tbody tr:hover{background:var(--hs-primary-d)}
             <div class="card-title"><i class="ti ti-info-circle"></i> اطلاعات سرور</div>
             <div id="vps-detail-info" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;font-size:12.5px"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-            <h3 style="font-size:14px;font-weight:700;color:var(--hs-text)">کانفیگ‌های این سرور</h3>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-vps-config')"><i class="ti ti-plus"></i> کانفیگ جدید</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <h3 style="font-size:14px;font-weight:700;color:var(--hs-text)">کانفیگ‌های این سرور <span style="font-size:11px;color:var(--hs-dim);font-weight:400">— JSON را کپی کنید و روی سرور با Xray اجرا کنید</span></h3>
+            <button class="btn btn-primary btn-sm" onclick="openGenCfgModal('vps')"><i class="ti ti-plus"></i> کانفیگ جدید</button>
           </div>
-          <div id="vps-configs-list"></div>
+          <div class="tbl-wrap">
+            <div class="tbl-scroll">
+              <table id="vps-cfg-tbl">
+                <thead><tr><th>نام</th><th>کانفیگ مبنا</th><th>SOCKS</th><th>ترافیک</th><th>سهمیه</th><th>وضعیت</th><th>پینگ</th><th>زمان</th><th>عملیات</th></tr></thead>
+                <tbody id="vps-cfg-tbody"><tr><td colspan="9" class="empty">در حال بارگذاری...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
+            <div class="page" id="page-socks">
+        <div class="page-head">
+          <div><h1 class="page-title"><i class="ti ti-shield-lock"></i> SOCKS5</h1><div class="page-sub">ساخت کانفیگ Xray با پورت SOCKS5 که از روی یکی از کانفیگ‌های VLESS شما تونل می‌زند — JSON را کپی و روی سرور خود اجرا کنید</div></div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" onclick="loadSocksList()"><i class="ti ti-refresh"></i> بروزرسانی</button>
+            <button class="btn btn-primary btn-sm" onclick="openGenCfgModal('socks')"><i class="ti ti-plus"></i> کانفیگ SOCKS جدید</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-head">
+            <div class="tbl-title"><i class="ti ti-list"></i> کانفیگ‌های SOCKS5</div>
+          </div>
+          <div class="tbl-scroll">
+            <table id="socks-tbl">
+              <thead><tr><th>نام</th><th>کانفیگ مبنا</th><th>SOCKS</th><th>ترافیک</th><th>سهمیه</th><th>وضعیت</th><th>پینگ</th><th>زمان</th><th>عملیات</th></tr></thead>
+              <tbody id="socks-tbody"><tr><td colspan="9" class="empty">در حال بارگذاری...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
       <div class="page" id="page-nodes">
         <div class="page-head">
           <div><h1 class="page-title"><i class="ti ti-server-2"></i> نودها</h1><div class="page-sub">مدیریت نودهای متصل</div></div>
@@ -876,12 +888,7 @@ tbody tr:hover{background:var(--hs-primary-d)}
           </div>
         </div>
       </div>
-      <div class="page" id="page-backups">
-        <div class="page-head">
-          <div><h1 class="page-title"><i class="ti ti-database"></i> بکاپ / ریستور</h1><div class="page-sub">پشتیبان‌گیری و بازیابی</div></div>
-        </div>
-        <div class="card"><div class="empty"><i class="ti ti-database"></i><div class="empty-title">بکاپ</div><div class="empty-sub">این بخش در حال توسعه است</div></div></div>
-      </div>
+      
       <div class="page" id="page-settings">
         <div class="page-head">
           <div><h1 class="page-title"><i class="ti ti-settings"></i> تنظیمات</h1><div class="page-sub">تنظیمات کلی سیستم</div></div>
@@ -903,7 +910,7 @@ tbody tr:hover{background:var(--hs-primary-d)}
             <span class="badge badge-green badge-dot" style="display:none" id="acct-badge">پنل شما</span>
           </div>
           <div style="font-size:11px;color:var(--hs-dim);margin-top:12px;line-height:1.9">
-            پنل هر کاربر کاملاً مستقل است؛ کانفیگ‌ها، گروه‌ها و سرورها فقط برای همان حساب ثبت‌شده قابل مشاهده و ویرایش هستند.
+            پنل هر کاربر کاملاً مستقل است؛ کانفیگ‌ها، سرورهای VPS و کانفیگ‌های SOCKS فقط برای همان حساب ثبت‌شده قابل مشاهده و ویرایش هستند.
           </div>
         </div>
       </div>
@@ -1030,65 +1037,36 @@ tbody tr:hover{background:var(--hs-primary-d)}
     </div>
   </div>
 </div>
-<div class="modal-bg" id="modal-gaming">
+<div class="modal-bg" id="modal-gen-cfg">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-icon" style="background:linear-gradient(135deg,var(--hs-primary),var(--hs-violet))"><i class="ti ti-device-gamepad-2"></i></div>
-      <div><div class="modal-title">کانفیگ گیمینگ جدید</div><div class="modal-sub">ساخت کانفیگ با تنظیمات کامل مشابه کانفیگ عادی</div></div>
-      <button class="modal-close" onclick="closeModal('modal-gaming')"><i class="ti ti-x"></i></button>
+      <div class="modal-icon"><i class="ti ti-file-plus"></i></div>
+      <div><div class="modal-title" id="gcfg-title">کانفیگ جدید</div><div class="modal-sub" id="gcfg-sub">از روی کانفیگ VLESS، کانفیگ Xray با پورت SOCKS5 ساخته می‌شود</div></div>
+      <button class="modal-close" onclick="closeModal('modal-gen-cfg')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
-      <div class="field"><label>نام کانفیگ</label><input type="text" id="gp-name" placeholder="مثلاً: Valorant Low Ping"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>بازی هدف</label>
-          <select id="gp-game">
-            <option>Valorant</option><option>CS2</option><option>PUBG</option><option>Fortnite</option>
-            <option>Apex Legends</option><option>Overwatch 2</option><option>Call of Duty</option><option>Other</option>
-          </select>
-        </div>
-        <div class="field"><label>پروتکل</label>
-          <select id="gp-proto">
-            <option value="vless-ws">VLESS · WebSocket</option>
-            <option value="xhttp-packet-up">VLESS · XHTTP packet-up</option>
-            <option value="xhttp-stream-up">VLESS · XHTTP stream-up</option>
-            <option value="trojan-ws">Trojan · WebSocket</option>
-          </select>
-        </div>
+      <input type="hidden" id="gc-kind">
+      <input type="hidden" id="gc-cid">
+      <div class="field"><label>نام کانفیگ</label><input type="text" id="gc-name" placeholder="مثلاً: کاربر 1"></div>
+      <div class="field"><label>کانفیگ مبنا (خروجی VLESS)</label>
+        <select id="gc-base"><option value="">در حال بارگذاری...</option></select>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>کشور</label>
-          <select id="gp-country">
-            <option value="auto">🌐 خودکار</option>
-            <option value="US">🇺🇸 US</option><option value="DE">🇩🇪 DE</option><option value="FR">🇫🇷 FR</option>
-            <option value="GB">🇬🇧 GB</option><option value="NL">🇳🇱 NL</option><option value="TR">🇹🇷 TR</option>
-            <option value="JP">🇯🇵 JP</option><option value="SG">🇸🇬 SG</option>
-          </select>
-        </div>
-        <div class="field"><label>پورت</label>
-          <select id="gp-port"><option value="443">443</option><option value="8443">8443</option><option value="2053">2053</option><option value="2083">2083</option></select>
+        <div class="field"><label>پورت SOCKS</label><input type="number" id="gc-port" value="10808" class="ltr" dir="ltr"></div>
+        <div class="field"><label>آدرس Listen</label>
+          <select id="gc-listen"><option value="127.0.0.1">127.0.0.1 (محلی)</option><option value="0.0.0.0">0.0.0.0 (عمومی)</option></select>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>پریست عملکرد</label>
-          <select id="gp-preset">
-            <option>Competitive (Ultra Low Ping)</option>
-            <option>Balanced</option>
-            <option>Streaming</option>
-            <option>Casual</option>
-          </select>
-        </div>
-        <div class="field"><label>اولویت شبکه</label><select id="gp-net"><option>UDP</option><option>TCP</option><option>Both</option></select></div>
-      </div>
-      <div class="field"><label>MTU</label><input type="number" id="gp-mtu" value="1420"></div>
       <div style="display:grid;grid-template-columns:1fr 80px;gap:10px">
-        <div class="field"><label>سهمیه ترافیک (GB)</label><input type="number" id="gp-val" min="0" value="0" placeholder="0 = نامحدود"></div>
-        <div class="field"><label>اعتبار (روز)</label><input type="number" id="gp-exp" min="0" value="30"></div>
+        <div class="field"><label>سهمیه ترافیک</label><input type="number" id="gc-val" min="0" placeholder="0 = نامحدود"></div>
+        <div class="field"><label>واحد</label><select id="gc-unit"><option>GB</option><option>MB</option></select></div>
       </div>
-      <div class="field"><label>توضیحات</label><textarea id="gp-desc" rows="2" placeholder="اختیاری"></textarea></div>
+      <div class="field"><label>مدت اعتبار (روز)</label><input type="number" id="gc-exp" min="0" placeholder="0 = نامحدود / خالی = بدون تغییر"></div>
+      <div class="field"><label>یادداشت</label><textarea id="gc-note" rows="2" placeholder="اختیاری"></textarea></div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeModal('modal-gaming')">انصراف</button>
-      <button class="btn btn-primary" onclick="saveGamingProfile()"><i class="ti ti-check"></i> ذخیره</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-gen-cfg')">انصراف</button>
+      <button class="btn btn-primary" onclick="saveGenCfg()"><i class="ti ti-check"></i> ذخیره</button>
     </div>
   </div>
 </div>
@@ -1135,37 +1113,23 @@ tbody tr:hover{background:var(--hs-primary-d)}
       <button class="btn btn-primary" onclick="saveVpsServer()"><i class="ti ti-check"></i> ثبت سرور</button>
     </div>
   </div>
-</div>
-<div class="modal-bg" id="modal-add-vps-config">
-  <div class="modal">
+</div><div class="modal-bg" id="modal-xray-view">
+  <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <div class="modal-icon"><i class="ti ti-file-plus"></i></div>
-      <div><div class="modal-title">کانفیگ VPS جدید</div><div class="modal-sub" id="vps-cfg-sub">ساخت کانفیگ روی سرور</div></div>
-      <button class="modal-close" onclick="closeModal('modal-add-vps-config')"><i class="ti ti-x"></i></button>
+      <div class="modal-icon"><i class="ti ti-code"></i></div>
+      <div><div class="modal-title" id="xv-title">کانفیگ Xray</div><div class="modal-sub">این JSON را کپی کرده و روی سرور با Xray اجرا کنید</div></div>
+      <button class="modal-close" onclick="closeModal('modal-xray-view')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="vcfg-server-id">
-      <div class="field"><label>نام کانفیگ</label><input type="text" id="vcfg-name" placeholder="مثلاً: کاربر 1"></div>
-      <div class="field"><label>پروتکل</label>
-        <select id="vcfg-proto">
-          <option value="vless-ws">VLESS · WebSocket</option>
-          <option value="trojan-ws">Trojan · WebSocket</option>
-          <option value="shadowsocks">Shadowsocks</option>
-        </select>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field"><label>پورت</label><input type="number" id="vcfg-port" value="443" class="ltr" dir="ltr"></div>
-        <div class="field"><label>سهمیه (GB)</label><input type="number" id="vcfg-limit" value="0" min="0" class="ltr" dir="ltr"></div>
-      </div>
-      <div class="field"><label>مدت اعتبار (روز)</label><input type="number" id="vcfg-exp" value="30" min="0"></div>
-      <div class="field"><label>توضیحات</label><textarea id="vcfg-note" rows="2" placeholder="اختیاری"></textarea></div>
+      <pre id="xv-json" style="direction:ltr;text-align:left;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;background:rgba(0,0,0,.25);border:1px solid var(--hs-border2);border-radius:10px;padding:14px;max-height:52vh;overflow:auto;white-space:pre;color:var(--hs-primary)"></pre>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeModal('modal-add-vps-config')">انصراف</button>
-      <button class="btn btn-primary" onclick="saveVpsConfig()"><i class="ti ti-check"></i> ساخت کانفیگ</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-xray-view')">بستن</button>
+      <button class="btn btn-primary" id="xv-copy"><i class="ti ti-copy"></i> کپی JSON</button>
     </div>
   </div>
 </div>
+
 <div class="toast-host" id="toast-host"></div>
 <script>
 let isDark = localStorage.getItem('hs-panel-theme') !== 'light';
@@ -1189,9 +1153,9 @@ function nav(page){
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
   closeSidebar();
   window.scrollTo({top:0,behavior:'smooth'});
-  if(page === 'vps'){ loadVpsServers(); }
-  if(page === 'socks'){ loadSocksStatus(); }
-  if(page === 'gaming'){ loadGamingList(); }
+  if(page === 'gaming'){ loadVpsServers(); }
+  if(page === 'socks'){ loadSocksList(); }
+  if(page === 'connections'){ loadConnections(); startConnTimer(); }
 }
 let sidebarCollapsed = localStorage.getItem('hs-sb-collapsed') === '1';
 function applySidebarState(){
@@ -1256,11 +1220,11 @@ async function loadStats(){
     document.getElementById('st-uptime').textContent = d.uptime || '00:00:00';
     document.getElementById('uptime-mini').textContent = d.uptime || '00:00:00';
     document.getElementById('bdg-links').textContent = d.links_count || 0;
-    document.getElementById('bdg-subs').textContent = d.subs_count || 0;
     const ss = document.getElementById('system-status');
     ss.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 0"><span class="badge badge-green badge-dot">آنلاین</span><span style="font-size:12px;color:var(--hs-dim)">سیستم فعال است</span></div>' +
       '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">کانفیگ‌های منقضی</span><span style="font-weight:600">' + (d.expired_links||0) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">گروه‌ها</span><span style="font-weight:600">' + (d.subs_count||0) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">سرورهای VPS</span><span style="font-weight:600">' + (d.vps_count||0) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">کانفیگ‌های SOCKS</span><span style="font-weight:600">' + (d.socks_count||0) + '</span></div>' +
       '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">کل درخواست‌ها</span><span style="font-weight:600">' + (d.total_requests||0) + '</span></div>' +
       '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--hs-border2);font-size:12px"><span style="color:var(--hs-dim)">ربات تلگرام</span><span class="tg-badge" style="font-size:10px;padding:3px 8px">@pinginoo-bot</span></div>';
   }catch(e){ showToast('خطا در بارگذاری آمار','error'); }
@@ -1288,7 +1252,7 @@ function pingBadgeHtml(uid){
     else if(cached > 100) cls = 'warn';
     return '<span class="ping-badge ' + cls + '" id="ping-' + uid + '">' + cached + 'ms</span>';
   }
-  return '<span class="ping-badge testing" id="ping-' + uid + '" style="cursor:pointer" onclick="testLink(\'' + uid + '\',true)"><i class="ti ti-bolt" style="font-size:12px"></i></span>';
+  return '<span class="ping-badge testing" id="ping-' + uid + '" style="cursor:pointer" onclick="runPingTest(\'' + uid + '\')"><i class="ti ti-bolt" style="font-size:12px"></i></span>';
 }
 function updatePingDisplay(uid, ms){
   linkPingCache[uid] = ms;
@@ -1301,7 +1265,7 @@ function updatePingDisplay(uid, ms){
   el.className = 'ping-badge ' + cls;
   el.textContent = ms + 'ms';
   el.style.cursor = 'pointer';
-  el.onclick = () => testLink(uid, true);
+  el.onclick = () => runPingTest(uid);
 }
 async function loadLinks(){
   try{
@@ -1327,6 +1291,7 @@ async function loadLinks(){
         '<td><div class="cell-mono" style="font-size:11px">' + (l.expires_at ? formatExpiry(l.expires_at) : '<span style="color:var(--hs-dim)">∞</span>') + '</div></td>' +
         '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="copyLink(\'' + l.uuid + '\')" title="کپی"><i class="ti ti-copy"></i></button><button class="btn btn-ghost btn-sm" onclick="editLink(\'' + l.uuid + '\')" title="ویرایش"><i class="ti ti-edit"></i></button><button class="btn btn-ghost btn-sm" onclick="toggleLink(\'' + l.uuid + '\',' + (l.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button><button class="btn btn-danger btn-sm" onclick="deleteLink(\'' + l.uuid + '\')" title="حذف"><i class="ti ti-trash"></i></button></div></td></tr>';
     }).join('');
+    links.forEach(l => { pingTestHandlers[l.uuid] = () => testLink(l.uuid, true); });
   }catch(e){ showToast('خطا در بارگذاری کانفیگ‌ها','error'); }
 }
 function filterLinks(q){
@@ -1565,142 +1530,12 @@ async function changePw(){
     document.getElementById('set-new-pw').value = '';
   }catch(e){ showToast(e.message,'error'); }
 }
-let gamingProfiles = [];
-function loadGamingList(){
-  try{ gamingProfiles = JSON.parse(localStorage.getItem('hs-gaming') || '[]'); }catch(e){ gamingProfiles = []; }
-  renderGamingTable();
-}
-function saveGamingProfiles(){ localStorage.setItem('hs-gaming', JSON.stringify(gamingProfiles)); }
-function renderGamingTable(){
-  const tb = document.getElementById('gaming-tbody');
-  if(!gamingProfiles.length){ tb.innerHTML = '<tr><td colspan="8"><div class="empty"><i class="ti ti-device-gamepad"></i><div class="empty-title">کانفیگی ندارید</div><div class="empty-sub">از دکمه بالا بسازید</div></div></td></tr>'; return; }
-  tb.innerHTML = gamingProfiles.map((p,i) =>
-    '<tr><td><div class="cell-label">' + (p.name||'') + '</div></td>' +
-    '<td><span class="badge badge-blue">' + (p.game||'') + '</span></td>' +
-    '<td><span class="badge badge-purple">' + (p.protocol||'vless-ws') + '</span></td>' +
-    '<td>' + (p.country||'auto') + '</td>' +
-    '<td>' + pingBadgeHtml('gp-'+i) + '</td>' +
-    '<td><span class="badge badge-amber">' + (p.preset||'') + '</span></td>' +
-    '<td><span class="cell-mono">MTU ' + (p.mtu||1420) + '</span></td>' +
-    '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="testGamingPing(' + i + ')"><i class="ti ti-bolt"></i></button><button class="btn btn-danger btn-sm" onclick="deleteGaming(' + i + ')"><i class="ti ti-trash"></i></button></div></td></tr>'
-  ).join('');
-}
-function saveGamingProfile(){
-  const p = {
-    name: document.getElementById('gp-name').value || 'بدون نام',
-    game: document.getElementById('gp-game').value,
-    protocol: document.getElementById('gp-proto').value,
-    country: document.getElementById('gp-country').value,
-    port: parseInt(document.getElementById('gp-port').value) || 443,
-    preset: document.getElementById('gp-preset').value,
-    net: document.getElementById('gp-net').value,
-    mtu: parseInt(document.getElementById('gp-mtu').value) || 1420,
-    limit: parseFloat(document.getElementById('gp-val').value) || 0,
-    expires: parseInt(document.getElementById('gp-exp').value) || 0,
-    desc: document.getElementById('gp-desc').value,
-    created_at: new Date().toISOString(),
-  };
-  gamingProfiles.push(p);
-  saveGamingProfiles();
-  renderGamingTable();
-  closeModal('modal-gaming');
-  showToast('کانفیگ گیمینگ ذخیره شد','success');
-  ['gp-name','gp-desc'].forEach(id => document.getElementById(id).value = '');
-}
-function deleteGaming(i){
-  if(!confirm('حذف شود؟')) return;
-  gamingProfiles.splice(i,1);
-  saveGamingProfiles();
-  renderGamingTable();
-  showToast('حذف شد','success');
-}
-function testGamingPing(i){
-  const uid = 'gp-'+i;
-  const el = document.getElementById('ping-'+uid);
-  if(el){ el.className='ping-badge testing'; el.innerHTML='<i class="ti ti-loader" style="font-size:11px;animation:spin 1s linear infinite"></i>'; }
-  setTimeout(() => {
-    const fakeMs = Math.floor(Math.random() * 60) + 20;
-    updatePingDisplay(uid, fakeMs);
-  }, 800 + Math.random()*800);
-}
-async function loadSocksStatus(){
-  const card = document.getElementById('socks-card');
-  const actions = document.getElementById('socks-actions');
-  card.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><div class="empty-sub">در حال بارگذاری...</div></div>';
-  try{
-    const r = await authFetch('/api/zeus-proxy/status');
-    const d = await r.json();
-    actions.innerHTML = '';
-    if(d.running && d.phase === 'done' && d.result){
-      const res = d.result;
-      const cfg = d.config;
-      card.innerHTML = '<div class="socks-status">' +
-        '<div class="socks-stat"><div class="socks-stat-val">' + (d.bytes_used_gb || 0).toFixed(2) + ' GB</div><div class="socks-stat-lbl">مصرف</div></div>' +
-        '<div class="socks-stat"><div class="socks-stat-val">' + (cfg.traffic_limit_gb || '∞') + '</div><div class="socks-stat-lbl">سهمیه (GB)</div></div>' +
-        '<div class="socks-stat"><div class="socks-stat-val">' + d.active_connections + '</div><div class="socks-stat-lbl">اتصال فعال</div></div>' +
-        '<div class="socks-stat"><div class="socks-stat-val" style="color:var(--hs-success);font-size:14px"><i class="ti ti-check"></i> فعال</div><div class="socks-stat-lbl">وضعیت</div></div>' +
-        '</div>' +
-        '<div style="margin-top:16px;padding:14px;background:rgba(0,0,0,.15);border:1px solid var(--hs-border2);border-radius:10px">' +
-        '<div style="font-size:11px;color:var(--hs-dim);margin-bottom:6px">کانفیگ اتصال:</div>' +
-        '<div class="mono" style="font-size:12px;color:var(--hs-primary);background:rgba(0,0,0,.2);padding:10px;border-radius:8px;direction:ltr;text-align:left;word-break:break-all;border:1px solid var(--hs-border)">' + res.config + '</div>' +
-        '<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="navigator.clipboard.writeText(\'' + res.config + '\');showToast(\'کپی شد\',\'success\')"><i class="ti ti-copy"></i> کپی کانفیگ</button>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px">' +
-        '<div class="field"><label>سهمیه (GB)</label><input type="number" id="sk-limit" value="' + cfg.traffic_limit_gb + '" min="0"></div>' +
-        '<div class="field"><label>انقضا (روز)</label><input type="number" id="sk-exp" value="' + cfg.expires_days + '" min="0"></div>' +
-        '<div class="field"><label>اتصال/IP</label><input type="number" id="sk-mc" value="' + cfg.max_connections_per_ip + '" min="0"></div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;margin-top:8px">' +
-        '<button class="btn btn-primary btn-sm" onclick="saveSocksConfig()"><i class="ti ti-check"></i> ذخیره تنظیمات</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="deleteSocks()"><i class="ti ti-trash"></i> حذف پروکسی</button>' +
-        '</div>';
-      actions.innerHTML = '<button class="btn btn-outline btn-sm" onclick="loadSocksStatus()"><i class="ti ti-refresh"></i></button>';
-    }else{
-      card.innerHTML = '<div class="card-title"><i class="ti ti-shield-lock"></i> ساخت پروکسی SOCKS5</div>' +
-        '<div style="font-size:12px;color:var(--hs-dim);margin-bottom:16px;line-height:1.8">ابتدا توکن Railway را وارد کنید، سپس تنظیمات دلخواه را اعمال کنید.</div>' +
-        '<div class="field"><label>توکن Railway</label><input type="password" id="sk-token" dir="ltr" placeholder="توکن Railway خود را وارد کنید"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
-        '<div class="field"><label>سهمیه (GB)</label><input type="number" id="sk-limit" value="10" min="0"></div>' +
-        '<div class="field"><label>انقضا (روز)</label><input type="number" id="sk-exp" value="30" min="0"></div>' +
-        '<div class="field"><label>اتصال/IP</label><input type="number" id="sk-mc" value="3" min="0"></div>' +
-        '</div>' +
-        '<button class="btn btn-primary" onclick="createSocks()"><i class="ti ti-plus"></i> ساخت پروکسی SOCKS5</button>' +
-        (d.error ? '<div style="margin-top:12px;padding:10px;background:var(--hs-danger-d);border:1px solid rgba(251,113,133,.25);border-radius:8px;color:var(--hs-danger);font-size:12px">' + d.error + '</div>' : '');
-    }
-  }catch(e){ card.innerHTML = '<div class="empty"><i class="ti ti-alert-circle"></i><div class="empty-sub">خطا در بارگذاری</div></div>'; }
-}
-async function createSocks(){
-  const body = {
-    token: document.getElementById('sk-token').value,
-    traffic_limit_gb: parseFloat(document.getElementById('sk-limit').value) || 0,
-    expires_days: parseInt(document.getElementById('sk-exp').value) || 0,
-    max_connections_per_ip: parseInt(document.getElementById('sk-mc').value) || 0,
-  };
-  try{
-    const r = await fetch('/api/zeus-proxy/create', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
-    showToast('پروکسی SOCKS5 ساخته شد','success');
-    loadSocksStatus();
-  }catch(e){ showToast(e.message,'error'); }
-}
-async function saveSocksConfig(){
-  const body = {
-    traffic_limit_gb: parseFloat(document.getElementById('sk-limit').value) || 0,
-    expires_days: parseInt(document.getElementById('sk-exp').value) || 0,
-    max_connections_per_ip: parseInt(document.getElementById('sk-mc').value) || 0,
-  };
-  try{
-    await fetch('/api/zeus-proxy/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-    showToast('تنظیمات ذخیره شد','success');
-    loadSocksStatus();
-  }catch(e){ showToast('خطا','error'); }
-}
-async function deleteSocks(){
-  if(!confirm('حذف پروکسی؟')) return;
-  try{ await fetch('/api/zeus-proxy/delete', {method:'POST'}); showToast('حذف شد','success'); loadSocksStatus(); }catch(e){ showToast('خطا','error'); }
-}
+let pingTestHandlers = {};
+function runPingTest(key){ const h = pingTestHandlers[key]; if(h) h(); }
 let vpsServers = [];
 let currentVpsServerId = null;
+let vpsCfgsCache = {};
+let socksConfigs = [];
 async function loadVpsServers(){
   try{
     const r = await authFetch('/api/vps');
@@ -1708,14 +1543,17 @@ async function loadVpsServers(){
     const d = await r.json();
     vpsServers = d.servers || [];
   }catch(e){ vpsServers = []; }
+  const bdg = document.getElementById('bdg-vps');
+  if(bdg){ bdg.textContent = vpsServers.length; bdg.style.display = vpsServers.length ? '' : 'none'; }
   renderVpsServers();
 }
 function renderVpsServers(){
   currentVpsServerId = null;
   document.getElementById('vps-detail').style.display = 'none';
   const list = document.getElementById('vps-servers-list');
+  if(!list) return;
   if(!vpsServers.length){
-    list.innerHTML = '<div class="card" style="grid-column:1/-1"><div class="empty"><i class="ti ti-server"></i><div class="empty-title">هنوز سروری ثبت نشده</div><div class="empty-sub">از دکمه «ثبت سرور جدید» شروع کنید — سرورها دائمی هستند</div></div></div>';
+    list.innerHTML = '<div class="card" style="grid-column:1/-1"><div class="empty"><i class="ti ti-server"></i><div class="empty-title">هنوز سروری ثبت نشده</div><div class="empty-sub">اولین سرور VPS خود را ثبت کنید — سرورها دائمی هستند و با خروج از پنل پاک نمی‌شوند</div></div></div>';
     return;
   }
   list.innerHTML = vpsServers.map(s => {
@@ -1724,13 +1562,13 @@ function renderVpsServers(){
       '<div style="position:absolute;top:10px;left:10px"><button class="btn btn-danger btn-icon btn-sm" onclick="event.stopPropagation();deleteVpsServer(\'' + s.id + '\',\'' + esc(s.name) + '\')" title="حذف سرور"><i class="ti ti-trash"></i></button></div>' +
       '<div class="server-card-header">' +
       '<div class="server-icon"><i class="ti ti-server"></i></div>' +
-      '<div><div class="server-name">' + esc(s.name) + '</div><div class="server-meta mono" style="direction:ltr;text-align:left">' + esc(s.host) + ':' + (s.port||22) + '</div></div>' +
+      '<div style="flex:1;min-width:0"><div class="server-name">' + esc(s.name) + '</div><div class="server-meta mono" style="direction:ltr;text-align:left">' + esc(s.host) + ':' + (s.port||22) + '</div></div>' +
       '<span class="badge badge-green badge-dot" style="flex-shrink:0"><i class="ti ti-lock" style="font-size:10px"></i> دائمی</span>' +
       '</div>' +
       '<div class="server-stats">' +
       '<div class="server-stat"><div class="server-stat-val">' + cc + '</div><div class="server-stat-lbl">کانفیگ</div></div>' +
+      '<div class="server-stat"><div class="server-stat-val">' + (s.active_configs||0) + '</div><div class="server-stat-lbl">فعال</div></div>' +
       '<div class="server-stat"><div class="server-stat-val" style="font-size:13px">' + esc(s.country||'—') + '</div><div class="server-stat-lbl">کشور</div></div>' +
-      '<div class="server-stat"><div class="server-stat-val" style="font-size:12px;color:var(--hs-primary)"><i class="ti ti-shield-lock"></i></div><div class="server-stat-lbl">محافظت</div></div>' +
       '</div></div>';
   }).join('');
 }
@@ -1741,11 +1579,10 @@ async function openVpsServer(sid){
     const r = await authFetch('/api/vps/' + sid);
     if(!r.ok) throw new Error();
     const s = await r.json();
+    vpsCfgsCache[sid] = s.configs || [];
     document.getElementById('vps-servers-list').innerHTML = '';
-    const detail = document.getElementById('vps-detail');
-    detail.style.display = 'block';
+    document.getElementById('vps-detail').style.display = 'block';
     document.getElementById('vps-detail-title').textContent = s.name;
-    const cfgs = s.configs || [];
     document.getElementById('vps-detail-info').innerHTML =
       '<div><div style="font-size:10px;color:var(--hs-dim);text-transform:uppercase">IP / Host</div><div class="mono" style="font-size:13px;margin-top:4px;direction:ltr;text-align:left">' + esc(s.host) + '</div></div>' +
       '<div><div style="font-size:10px;color:var(--hs-dim);text-transform:uppercase">پورت SSH</div><div class="mono" style="font-size:13px;margin-top:4px">' + (s.port||22) + '</div></div>' +
@@ -1754,25 +1591,21 @@ async function openVpsServer(sid){
       '<div><div style="font-size:10px;color:var(--hs-dim);text-transform:uppercase">نوع</div><div style="font-size:13px;margin-top:4px">' + esc(s.type||'kvm') + '</div></div>' +
       '<div><div style="font-size:10px;color:var(--hs-dim);text-transform:uppercase">وضعیت</div><div style="font-size:13px;margin-top:4px"><span class="badge badge-green badge-dot"><i class="ti ti-lock" style="font-size:9px"></i> ذخیره دائمی</span></div></div>' +
       (s.note ? '<div style="grid-column:1/-1"><div style="font-size:10px;color:var(--hs-dim);text-transform:uppercase">یادداشت</div><div style="font-size:12px;margin-top:4px;color:var(--hs-mid)">' + esc(s.note) + '</div></div>' : '');
-    const cfgList = document.getElementById('vps-configs-list');
-    if(!cfgs.length){
-      cfgList.innerHTML = '<div class="card"><div class="empty" style="padding:30px"><i class="ti ti-file-plus"></i><div class="empty-title">کانفیگی نیست</div><div class="empty-sub">اولین کانفیگ این سرور را بسازید</div></div></div>';
-    }else{
-      cfgList.innerHTML = cfgs.map(c =>
-        '<div class="vps-config-item">' +
-        '<div style="width:36px;height:36px;border-radius:9px;background:var(--hs-primary-d);color:var(--hs-primary);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0"><i class="ti ti-file-text"></i></div>' +
-        '<div class="vps-config-info">' +
-        '<div class="vps-config-name">' + esc(c.name) + '</div>' +
-        '<div class="vps-config-details">' + esc(c.protocol||'') + ' · :' + c.port + ' · ' + (c.limit_gb||0) + 'GB · ' + (c.expires_days||0) + ' روز</div>' +
-        '</div>' +
-        '<div class="vps-config-actions">' +
-        '<button class="btn btn-ghost btn-icon btn-sm" onclick="copyVpsCfg(\'' + sid + '\',\'' + c.id + '\')" title="کپی"><i class="ti ti-copy"></i></button>' +
-        '<button class="btn btn-danger btn-icon btn-sm" onclick="deleteVpsCfg(\'' + sid + '\',\'' + c.id + '\')" title="حذف"><i class="ti ti-trash"></i></button>' +
-        '</div></div>'
-      ).join('');
-    }
+    renderVpsCfgTable();
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){ showToast('خطا در بارگذاری سرور','error'); }
+}
+function renderVpsCfgTable(){
+  const tb = document.getElementById('vps-cfg-tbody');
+  if(!tb) return;
+  const cfgs = (currentVpsServerId && vpsCfgsCache[currentVpsServerId]) || [];
+  cfgs.forEach(c => { pingTestHandlers['vps:' + currentVpsServerId + ':' + c.id] = () => testGenPing(currentVpsServerId, c.id); });
+  if(!cfgs.length){ tb.innerHTML = '<tr><td colspan="9"><div class="empty"><i class="ti ti-file-plus"></i><div class="empty-title">کانفیگی نیست</div><div class="empty-sub">اولین کانفیگ این سرور را بسازید</div></div></td></tr>'; return; }
+  tb.innerHTML = cfgs.map(c => genCfgRowHtml('vps', c)).join('');
+}
+function openAddVpsModal(){
+  ['vps-name','vps-host','vps-pass','vps-note'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  openModal('modal-add-vps');
 }
 async function saveVpsServer(){
   const name = document.getElementById('vps-name').value.trim();
@@ -1793,63 +1626,247 @@ async function saveVpsServer(){
     closeModal('modal-add-vps');
     showToast('سرور «' + name + '» ثبت شد و دائمی شد','success');
     await loadVpsServers();
-    ['vps-name','vps-host','vps-pass','vps-note'].forEach(id => document.getElementById(id).value = '');
   }catch(e){ showToast(e.message,'error'); }
 }
 async function deleteVpsServer(sid, name){
-  if(!confirm('سرور «' + name + '» حذف شود؟')) return;
+  if(!confirm('سرور «' + name + '» و همه کانفیگ‌هایش حذف شود؟')) return;
   try{
     await fetch('/api/vps/' + sid, {method:'DELETE'});
     showToast('سرور حذف شد','success');
     await loadVpsServers();
   }catch(e){ showToast('خطا در حذف','error'); }
 }
-async function saveVpsConfig(){
-  const name = document.getElementById('vcfg-name').value.trim();
+function genCfgRowHtml(kind, c){
+  const sid = kind === 'vps' ? currentVpsServerId : null;
+  const pk = kind === 'vps' ? 'vps:' + sid + ':' + c.id : 'sk:' + c.id;
+  const used = c.used_bytes||0, lim = c.limit_bytes||0;
+  const pct = lim > 0 ? Math.min(100, used/lim*100) : 0;
+  const status = c.expired ? '<span class="badge badge-red badge-dot">منقضی</span>' : (c.active===false ? '<span class="badge badge-amber badge-dot">غیرفعال</span>' : '<span class="badge badge-green badge-dot">فعال</span>');
+  const sidArg = sid ? "'" + sid + "'" : 'null';
+  const cidArg = "'" + c.id + "'";
+  const act = (fn, icon, title) => '<button class="btn btn-ghost btn-sm" onclick="' + fn + '(' + sidArg + ',' + cidArg + ')" title="' + title + '"><i class="ti ' + icon + '"></i></button>';
+  const actions = act('viewGenCfg','ti-code','مشاهده JSON') + act('copyGenCfg','ti-copy','کپی JSON') + act('editGenCfg','ti-edit','ویرایش') +
+    '<button class="btn btn-ghost btn-sm" onclick="toggleGenCfg(' + sidArg + ',' + cidArg + ',' + (c.active!==false) + ')" title="تغییر وضعیت"><i class="ti ti-power"></i></button>' +
+    '<button class="btn btn-danger btn-sm" onclick="deleteGenCfg(' + sidArg + ',' + cidArg + ')" title="حذف"><i class="ti ti-trash"></i></button>';
+  return '<tr>' +
+    '<td><div class="cell-label">' + esc(c.name) + '</div>' + (c.note ? '<div class="cell-muted">' + esc(c.note) + '</div>' : '') + '</td>' +
+    '<td><div style="font-size:11.5px">' + esc(c.base_label || '—') + '</div><span class="badge badge-purple" style="margin-top:3px">' + esc(c.base_protocol || '') + '</span></td>' +
+    '<td><span class="cell-mono" style="display:inline-block;direction:ltr">' + esc(c.listen||'127.0.0.1') + ':' + (c.socks_port||10808) + '</span></td>' +
+    '<td><div class="cell-mono">' + fmtBytes(used) + '</div>' + (lim>0 ? '<div style="height:3px;background:var(--hs-border2);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--hs-primary),var(--hs-violet))"></div></div>' : '') + '</td>' +
+    '<td><span class="cell-mono">' + (lim>0 ? fmtBytes(lim) : '∞') + '</span></td>' +
+    '<td>' + status + '</td>' +
+    '<td>' + pingBadgeHtml(pk) + '</td>' +
+    '<td><div class="cell-mono" style="font-size:11px">' + (c.expires_at ? formatExpiry(c.expires_at) : '<span style="color:var(--hs-dim)">∞</span>') + '</div></td>' +
+    '<td><div style="display:flex;gap:4px">' + actions + '</div></td></tr>';
+}
+function findGenCfg(kind, cid){
+  if(kind === 'vps'){
+    const cfgs = (currentVpsServerId && vpsCfgsCache[currentVpsServerId]) || [];
+    return cfgs.find(x => x.id === cid);
+  }
+  return socksConfigs.find(x => x.id === cid);
+}
+async function populateBaseSelect(){
+  const sel = document.getElementById('gc-base');
+  if(!sel) return;
+  try{
+    const r = await fetch('/api/links');
+    const d = await r.json();
+    const okProto = ['vless-ws','xhttp-packet-up','xhttp-stream-up','trojan-ws','trojan-xhttp-packet-up','trojan-xhttp-stream-up','shadowsocks'];
+    const links = (d.links||[]).filter(l => okProto.includes(l.protocol));
+    const prev = sel.value;
+    sel.innerHTML = links.length
+      ? links.map(l => '<option value="' + l.uuid + '">' + esc(l.label) + ' · ' + esc(l.protocol) + '</option>').join('')
+      : '<option value="">اول از بخش کانفیگ‌ها یک کانفیگ بسازید</option>';
+    if(prev) sel.value = prev;
+  }catch(e){ sel.innerHTML = '<option value="">خطا در بارگذاری</option>'; }
+}
+function openGenCfgModal(kind, cid){
+  if(kind === 'vps' && !currentVpsServerId){ showToast('ابتدا سرور را انتخاب کنید','error'); return; }
+  document.getElementById('gc-kind').value = kind;
+  document.getElementById('gc-cid').value = cid || '';
+  const title = document.getElementById('gcfg-title');
+  const sub = document.getElementById('gcfg-sub');
+  if(cid){
+    const c = findGenCfg(kind, cid);
+    title.textContent = 'ویرایش کانفیگ';
+    sub.textContent = kind === 'vps' ? 'ویرایش کانفیگ سرور VPS' : 'ویرایش کانفیگ SOCKS5';
+    document.getElementById('gc-name').value = c ? c.name : '';
+    document.getElementById('gc-port').value = c ? (c.socks_port||10808) : 10808;
+    document.getElementById('gc-listen').value = c ? (c.listen||'127.0.0.1') : '127.0.0.1';
+    const lb = c ? (c.limit_bytes||0) : 0;
+    if(lb > 0){
+      if(lb >= 1024*1024*1024){ document.getElementById('gc-val').value = (lb/1024/1024/1024).toFixed(2); document.getElementById('gc-unit').value = 'GB'; }
+      else{ document.getElementById('gc-val').value = (lb/1024/1024).toFixed(2); document.getElementById('gc-unit').value = 'MB'; }
+    }else{ document.getElementById('gc-val').value = 0; document.getElementById('gc-unit').value = 'GB'; }
+    document.getElementById('gc-exp').value = '';
+    document.getElementById('gc-note').value = c ? (c.note||'') : '';
+    populateBaseSelect().then(() => { if(c && c.vless_uuid) document.getElementById('gc-base').value = c.vless_uuid; });
+  }else{
+    title.textContent = kind === 'vps' ? 'کانفیگ VPS جدید' : 'کانفیگ SOCKS جدید';
+    sub.textContent = 'از روی کانفیگ VLESS، کانفیگ Xray با پورت SOCKS5 ساخته می‌شود';
+    document.getElementById('gc-name').value = '';
+    document.getElementById('gc-port').value = 10808;
+    document.getElementById('gc-listen').value = '127.0.0.1';
+    document.getElementById('gc-val').value = 0;
+    document.getElementById('gc-unit').value = 'GB';
+    document.getElementById('gc-exp').value = '';
+    document.getElementById('gc-note').value = '';
+    populateBaseSelect();
+  }
+  openModal('modal-gen-cfg');
+}
+async function saveGenCfg(){
+  const kind = document.getElementById('gc-kind').value;
+  const cid = document.getElementById('gc-cid').value;
+  const name = document.getElementById('gc-name').value.trim();
+  const base = document.getElementById('gc-base').value;
   if(!name){ showToast('نام کانفیگ را وارد کنید','warn'); return; }
-  if(!currentVpsServerId){ showToast('ابتدا سرور را انتخاب کنید','error'); return; }
+  if(!base){ showToast('کانفیگ مبنا (VLESS) را انتخاب کنید','warn'); return; }
   const body = {
     name: name,
-    protocol: document.getElementById('vcfg-proto').value,
-    port: parseInt(document.getElementById('vcfg-port').value) || 443,
-    limit: parseFloat(document.getElementById('vcfg-limit').value) || 0,
-    expires: parseInt(document.getElementById('vcfg-exp').value) || 0,
-    note: document.getElementById('vcfg-note').value,
+    vless_uuid: base,
+    socks_port: parseInt(document.getElementById('gc-port').value) || 10808,
+    listen: document.getElementById('gc-listen').value,
+    limit_value: parseFloat(document.getElementById('gc-val').value) || 0,
+    limit_unit: document.getElementById('gc-unit').value,
+    note: document.getElementById('gc-note').value,
   };
+  const expVal = document.getElementById('gc-exp').value;
+  if(expVal !== '' && expVal !== null) body.expires_days = parseInt(expVal) || 0;
   try{
-    const r = await fetch('/api/vps/' + currentVpsServerId + '/configs', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    let url, method;
+    if(kind === 'vps'){
+      if(!currentVpsServerId){ showToast('ابتدا سرور را انتخاب کنید','error'); return; }
+      url = '/api/vps/' + currentVpsServerId + '/configs' + (cid ? '/' + cid : '');
+      method = cid ? 'PATCH' : 'POST';
+    }else{
+      url = '/api/socks' + (cid ? '/' + cid : '');
+      method = cid ? 'PATCH' : 'POST';
+    }
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || 'خطا'); }
-    closeModal('modal-add-vps-config');
-    showToast('کانفیگ ساخته شد','success');
-    await openVpsServer(currentVpsServerId);
-    ['vcfg-name','vcfg-note'].forEach(id => document.getElementById(id).value = '');
+    closeModal('modal-gen-cfg');
+    showToast(cid ? 'کانفیگ ویرایش شد' : 'کانفیگ ساخته شد','success');
+    if(kind === 'vps') await openVpsServer(currentVpsServerId); else await loadSocksList();
   }catch(e){ showToast(e.message,'error'); }
 }
-async function deleteVpsCfg(sid, cid){
-  if(!confirm('حذف کانفیگ؟')) return;
+async function toggleGenCfg(sid, cid, active){
   try{
-    await fetch('/api/vps/' + sid + '/configs/' + cid, {method:'DELETE'});
+    const url = sid ? '/api/vps/' + sid + '/configs/' + cid : '/api/socks/' + cid;
+    await fetch(url, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({active: !active})});
+    showToast(!active ? 'کانفیگ فعال شد' : 'کانفیگ غیرفعال شد','success');
+    if(sid) await openVpsServer(sid); else await loadSocksList();
+  }catch(e){ showToast('خطا','error'); }
+}
+async function deleteGenCfg(sid, cid){
+  if(!confirm('حذف شود؟')) return;
+  try{
+    const url = sid ? '/api/vps/' + sid + '/configs/' + cid : '/api/socks/' + cid;
+    await fetch(url, {method:'DELETE'});
+    delete linkPingCache[sid ? 'vps:' + sid + ':' + cid : 'sk:' + cid];
+    savePingCache();
     showToast('حذف شد','success');
-    await openVpsServer(sid);
+    if(sid) await openVpsServer(sid); else await loadSocksList();
   }catch(e){ showToast('خطا','error'); }
 }
-async function copyVpsCfg(sid, cid){
+function copyGenCfg(sid, cid){
+  const c = findGenCfg(sid ? 'vps' : 'socks', cid);
+  if(!c || !c.xray_json){ showToast('کانفیگ پیدا نشد','error'); return; }
+  navigator.clipboard.writeText(c.xray_json);
+  showToast('JSON کانفیگ کپی شد','success');
+}
+function viewGenCfg(sid, cid){
+  const c = findGenCfg(sid ? 'vps' : 'socks', cid);
+  if(!c || !c.xray_json){ showToast('کانفیگ پیدا نشد','error'); return; }
+  document.getElementById('xv-title').textContent = c.name;
+  document.getElementById('xv-json').textContent = c.xray_json;
+  document.getElementById('xv-copy').onclick = () => { navigator.clipboard.writeText(c.xray_json); showToast('کپی شد','success'); };
+  openModal('modal-xray-view');
+}
+async function testGenPing(sid, cid){
+  const pk = sid ? 'vps:' + sid + ':' + cid : 'sk:' + cid;
+  const el = document.getElementById('ping-' + pk);
+  if(el){ el.className = 'ping-badge testing'; el.innerHTML = '<i class="ti ti-loader" style="font-size:11px;animation:spin 1s linear infinite"></i>'; }
   try{
-    const r = await authFetch('/api/vps/' + sid);
-    const s = await r.json();
-    const c = (s.configs||[]).find(x => x.id === cid);
-    if(!c) return;
-    const text = c.name + '\n' + (c.protocol||'') + ' :' + c.port + '\nserver: ' + s.host + '\n' + (c.note||'');
-    navigator.clipboard.writeText(text);
-    showToast('کپی شد','success');
-  }catch(e){ showToast('خطا','error'); }
+    const url = sid ? '/api/vps/' + sid + '/configs/' + cid + '/test' : '/api/socks/' + cid + '/test';
+    const r = await fetch(url, {method:'POST'});
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok && d.total_ms != null){ updatePingDisplay(pk, d.total_ms); }
+    else{ updatePingDisplay(pk, 999); }
+  }catch(e){ updatePingDisplay(pk, 999); }
 }
-document.getElementById('modal-add-vps-config').addEventListener('click', function(){
-  if(currentVpsServerId){
-    const srv = vpsServers.find(x => x.id === currentVpsServerId);
-    document.getElementById('vcfg-sub').textContent = 'ساخت کانفیگ روی ' + (srv ? srv.name : 'سرور');
-  }
-});
+async function loadSocksList(){
+  try{
+    const r = await authFetch('/api/socks');
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    socksConfigs = d.socks || [];
+  }catch(e){ socksConfigs = []; }
+  const bdg = document.getElementById('bdg-socks');
+  if(bdg){ bdg.textContent = socksConfigs.length; bdg.style.display = socksConfigs.length ? '' : 'none'; }
+  renderSocksTable();
+}
+function renderSocksTable(){
+  const tb = document.getElementById('socks-tbody');
+  if(!tb) return;
+  socksConfigs.forEach(c => { pingTestHandlers['sk:' + c.id] = () => testGenPing(null, c.id); });
+  if(!socksConfigs.length){ tb.innerHTML = '<tr><td colspan="9"><div class="empty"><i class="ti ti-shield-lock"></i><div class="empty-title">کانفیگ SOCKS نیست</div><div class="empty-sub">از روی یک کانفیگ VLESS، کانفیگ Xray با پورت SOCKS5 بسازید</div></div></td></tr>'; return; }
+  tb.innerHTML = socksConfigs.map(c => genCfgRowHtml('socks', c)).join('');
+}
+let connTimer = null;
+let connAuto = true;
+function connTimeFmt(iso){
+  if(!iso) return '—';
+  try{
+    const d = new Date(iso);
+    if(isNaN(d)) return iso;
+    return d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }catch(e){ return iso; }
+}
+async function loadConnections(){
+  try{
+    const r = await authFetch('/api/connections');
+    const d = await r.json();
+    const conns = d.connections || [];
+    const ips = document.getElementById('stc-ips');
+    if(ips) ips.textContent = d.count || 0;
+    const ses = document.getElementById('stc-ses');
+    if(ses) ses.textContent = d.raw_count || 0;
+    const by = document.getElementById('stc-bytes');
+    if(by) by.textContent = fmtBytes(conns.reduce((a,c) => a + (c.bytes||0), 0));
+    const tb = document.querySelector('#conn-tbl tbody');
+    if(!tb) return;
+    if(!conns.length){
+      tb.innerHTML = '<tr><td colspan="7"><div class="empty"><i class="ti ti-pulse"></i><div class="empty-title">اتصال فعالی نیست</div><div class="empty-sub">وقتی کاربری به کانفیگ‌های شما وصل شود، اینجا نمایش داده می‌شود</div></div></td></tr>';
+      return;
+    }
+    tb.innerHTML = conns.map(c =>
+      '<tr>' +
+      '<td><div class="cell-mono" style="direction:ltr;text-align:right">' + esc(c.ip) + '</div></td>' +
+      '<td><div class="cell-label">' + esc(c.label) + '</div></td>' +
+      '<td>' + (c.transports||[]).map(t => '<span class="badge badge-purple">' + esc(t) + '</span>').join(' ') + '</td>' +
+      '<td><span class="cell-mono">' + (c.sessions||0) + '</span></td>' +
+      '<td><div class="cell-mono">' + esc(c.bytes_fmt||'0 B') + '</div></td>' +
+      '<td><div class="cell-muted">' + connTimeFmt(c.connected_at) + '</div></td>' +
+      '<td><div class="cell-muted">' + connTimeFmt(c.last_connected_at) + '</div></td>' +
+      '</tr>'
+    ).join('');
+  }catch(e){}
+}
+function startConnTimer(){
+  if(connTimer) return;
+  connTimer = setInterval(() => {
+    const pg = document.getElementById('page-connections');
+    if(pg && pg.classList.contains('active') && connAuto){ loadConnections(); }
+  }, 5000);
+}
+function toggleConnAuto(){
+  connAuto = !connAuto;
+  const cb = document.getElementById('conn-auto');
+  if(cb) cb.checked = connAuto;
+}
+
 let trafficChart = null;
 function renderChart(hourly){
   const ctx = document.getElementById('trafficChart');
@@ -1956,10 +1973,11 @@ async function initAccountCard(){
 async function refreshAll(){ await Promise.all([loadStats(), loadActivity(), loadLinks()]); }
 async function init(){
   try{ await refreshAll(); }catch(e){}
-  try{ loadGamingList(); }catch(e){}
   try{ loadVpsServers(); }catch(e){}
+  try{ loadSocksList(); }catch(e){}
   try{ await initAccountCard(); }catch(e){}
   try{ const r = await authFetch('/stats'); const d = await r.json(); renderChart(d.hourly||{}); }catch(e){ renderChart({}); }
+  startConnTimer();
   setInterval(loadStats, 30000);
 }
 init().catch(e => console.error('init failed', e));
