@@ -339,6 +339,9 @@ async def load_state():
                 for nid, n in (bucket.get("nodes") or {}).items():
                     if nid not in b["nodes"] and isinstance(n, dict):
                         b["nodes"][nid] = _normalize_node(n)
+                for vid, v in (bucket.get("vps_servers") or {}).items():
+                    if vid not in b["vps_servers"] and isinstance(v, dict):
+                        b["vps_servers"][vid] = v
 
             total_links = sum(len(b["links"]) for b in USER_DATA.values())
             total_subs = sum(len(b["subs"]) for b in USER_DATA.values())
@@ -366,6 +369,7 @@ async def save_state():
                         "subs": dict(b["subs"]),
                         "nodes": dict(b["nodes"]),
                         "node_keys": dict(b["node_keys"]),
+                        "vps_servers": dict(b.get("vps_servers", {})),
                     }
                     for uname, b in USER_DATA.items()
                 },
@@ -454,7 +458,7 @@ USER_ACTIVITY: dict = {}  # username -> deque لاگ فعالیت‌ها (جدا
 SYSTEM_ACTIVITY: deque = deque(maxlen=200)
 activity_logs = SYSTEM_ACTIVITY   # alias قدیمی — لاگ‌های سیستمی
 
-_BUCKET_KEYS = ("links", "subs", "nodes", "node_keys")
+_BUCKET_KEYS = ("links", "subs", "nodes", "node_keys", "vps_servers")
 
 def _user_bucket(username: str) -> dict:
     b = USER_DATA.get(username)
@@ -757,6 +761,7 @@ async def force_save_state():
                     "subs": dict(b["subs"]),
                     "nodes": dict(b["nodes"]),
                     "node_keys": dict(b["node_keys"]),
+                    "vps_servers": dict(b.get("vps_servers", {})),
                 }
                 for uname, b in USER_DATA.items()
             },
@@ -3191,6 +3196,134 @@ async def proxy_node_update_link(node_id: str, uid: str, request: Request, _=Dep
 @app.delete("/api/nodes/{node_id}/links/{uid}")
 async def proxy_node_delete_link(node_id: str, uid: str, _=Depends(require_auth)):
     return await _proxy_node_link_write(node_id, uid, "DELETE")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VPS Servers Management (persistent, per-user, protected from deletion)
+# ══════════════════════════════════════════════════════════════════════════════
+VPS_LOCK = asyncio.Lock()
+
+def _get_user_vps(username: str) -> dict:
+    b = _user_bucket(username)
+    if "vps_servers" not in b:
+        b["vps_servers"] = {}
+    return b["vps_servers"]
+
+@app.get("/api/vps")
+async def list_vps(username=Depends(require_auth)):
+    servers = _get_user_vps(username)
+    result = []
+    for sid, s in servers.items():
+        cfgs = s.get("configs", [])
+        result.append({
+            "id": sid,
+            "name": s.get("name", ""),
+            "host": s.get("host", ""),
+            "port": s.get("port", 22),
+            "user": s.get("user", "root"),
+            "country": s.get("country", ""),
+            "type": s.get("type", "kvm"),
+            "note": s.get("note", ""),
+            "protected": True,
+            "configs_count": len(cfgs),
+            "created_at": s.get("created_at"),
+        })
+    result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return {"servers": result}
+
+@app.post("/api/vps")
+async def create_vps(request: Request, username=Depends(require_auth)):
+    body = await request.json()
+    name = str(body.get("name") or "سرور جدید").strip()[:80]
+    host = str(body.get("host") or "").strip()[:120]
+    if not name or not host:
+        raise HTTPException(status_code=400, detail="نام و IP/Host الزامی است")
+    sid = generate_uuid()
+    server = {
+        "id": sid,
+        "name": name,
+        "host": host,
+        "port": int(body.get("port") or 22),
+        "user": str(body.get("user") or "root")[:60],
+        "password": str(body.get("password") or "")[:200],
+        "country": str(body.get("country") or "other")[:20],
+        "type": str(body.get("type") or "kvm")[:30],
+        "note": str(body.get("note") or "")[:300],
+        "protected": True,
+        "created_at": datetime.now().isoformat(),
+        "configs": [],
+    }
+    async with VPS_LOCK:
+        servers = _get_user_vps(username)
+        servers[sid] = server
+    asyncio.create_task(save_state())
+    log_activity("vps", f"سرور VPS «{name}» ثبت شد", "ok")
+    return {"ok": True, "server": {"id": sid, "name": name, "host": host, "configs_count": 0}}
+
+@app.delete("/api/vps/{sid}")
+async def delete_vps(sid: str, username=Depends(require_auth)):
+    async with VPS_LOCK:
+        servers = _get_user_vps(username)
+        if sid not in servers:
+            raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+        name = servers[sid].get("name", sid)
+        del servers[sid]
+    asyncio.create_task(save_state())
+    log_activity("vps", f"سرور VPS «{name}» حذف شد", "warn")
+    return {"ok": True}
+
+@app.post("/api/vps/{sid}/configs")
+async def create_vps_config(sid: str, request: Request, username=Depends(require_auth)):
+    body = await request.json()
+    name = str(body.get("name") or "کانفیگ جدید").strip()[:80]
+    if not name:
+        raise HTTPException(status_code=400, detail="نام کانفیگ الزامی است")
+    cid = generate_uuid()
+    cfg = {
+        "id": cid,
+        "name": name,
+        "protocol": str(body.get("protocol") or "vless-ws")[:30],
+        "port": int(body.get("port") or 443),
+        "limit_gb": float(body.get("limit") or 0),
+        "expires_days": int(body.get("expires") or 0),
+        "note": str(body.get("note") or "")[:300],
+        "created_at": datetime.now().isoformat(),
+    }
+    async with VPS_LOCK:
+        servers = _get_user_vps(username)
+        if sid not in servers:
+            raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+        if "configs" not in servers[sid]:
+            servers[sid]["configs"] = []
+        servers[sid]["configs"].append(cfg)
+        srv_name = servers[sid].get("name", "")
+    asyncio.create_task(save_state())
+    log_activity("vps", f"کانفیگ VPS «{name}» روی سرور «{srv_name}» ساخته شد", "ok")
+    return {"ok": True, "config": cfg}
+
+@app.delete("/api/vps/{sid}/configs/{cid}")
+async def delete_vps_config(sid: str, cid: str, username=Depends(require_auth)):
+    async with VPS_LOCK:
+        servers = _get_user_vps(username)
+        if sid not in servers:
+            raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+        cfgs = servers[sid].get("configs", [])
+        servers[sid]["configs"] = [c for c in cfgs if c.get("id") != cid]
+    asyncio.create_task(save_state())
+    return {"ok": True}
+
+@app.get("/api/vps/{sid}")
+async def get_vps_detail(sid: str, username=Depends(require_auth)):
+    servers = _get_user_vps(username)
+    if sid not in servers:
+        raise HTTPException(status_code=404, detail="سرور پیدا نشد")
+    s = servers[sid]
+    return {
+        "id": sid,
+        **{k: v for k, v in s.items() if k != "password"},
+        "has_password": bool(s.get("password")),
+        "configs": s.get("configs", []),
+    }
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # VLESS Relay
