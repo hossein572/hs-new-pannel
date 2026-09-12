@@ -1,16 +1,16 @@
-# bottokentcpproxy.py
-# ══════════════════════════════════════════════════════════════════════════════
-# ساخت خودکار TCP Proxy روی Railway — فلوی نهایی:
-#   ۱) پینگ واقعیِ دامنه‌ها از سمت مرورگرِ خودِ کاربر انجام می‌شود (نه از سرور پنل؛
-#      چون سرور پنل خودش روی Railway/خارج است و همیشه به همه‌چیز دسترسی دارد و
-#      نمی‌تواند فیلتر بودنِ یک دامنه از دید اینترنت کاربر را تشخیص دهد). نتیجه‌ی
-#      این پینگ (لیست دامنه‌های سالم) از فرانت‌اند به این ماژول پاس داده می‌شود.
-#   ۲) با پورتی که کاربر داده، مرتب روی Railway پروکسی ساخته می‌شود (create)؛ اگر دامنه‌ی
-#      تصادفیِ برگشتی جزو دامنه‌های «سالم» نبود، حذف (delete) و دوباره تلاش می‌شود — تا
-#      وقتی که یک دامنه‌ی سالم گیر بیاید.
-#   ۳) به محض پیدا شدن، خودکار به یک لینک تلگرامی (با همان پورت داخلی) وصل می‌شود.
-# برای سرعت بالا، ساخت پروکسی به‌صورت موازی (چند تلاش هم‌زمان) ارسال می‌شود.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import os
@@ -41,10 +41,10 @@ KNOWN_DOMAINS: tuple[str, ...] = (
 
 MAX_ATTEMPTS = int(os.environ.get("BOT_TCP_PROXY_MAX_ATTEMPTS", 300))
 
-# چند درخواست هم‌زمان (موازی) در هر راند ساخت پروکسی ارسال شود
+
 CONCURRENCY = int(os.environ.get("BOT_TCP_PROXY_CONCURRENCY", 8))
 
-# تاخیر پایه بین راندهای ساخت (وقتی ریت‌لیمیت نخوریم صفر است = سریع‌ترین حالت)
+
 DELAY_SEC = float(os.environ.get("BOT_TCP_PROXY_DELAY", 0))
 MAX_BACKOFF = 15.0
 
@@ -74,10 +74,10 @@ mutation TcpProxyDelete($id: String!) {
 
 bot_proxy_state = {
     "running": False,
-    "phase": "idle",          # idle | searching | done | error | stopped
+    "phase": "idle",
     "progress": 0,
     "attempts": 0,
-    "result": None,            # {domain, port, application_port, id}
+    "result": None,
     "error": None,
     "stopped_by_user": False,
 }
@@ -164,7 +164,7 @@ class _RateLimited(Exception):
 
 
 class _AuthError(Exception):
-    """فقط برای خطاهای واقعیِ احراز هویت (توکن نامعتبر) — تنها موردی که باید کل فرآیند را متوقف کند."""
+
     pass
 
 
@@ -186,8 +186,8 @@ async def _gql(client: httpx.AsyncClient, token: str, query: str, variables: dic
     data = resp.json()
     if data.get("errors"):
         msg = "; ".join(e.get("message", "خطای نامشخص") for e in data["errors"])
-        # این یک خطای GraphQL معمولی است (مثلاً تداخل موقتی هنگام ساخت هم‌زمان چند پروکسی)
-        # و نباید کل فرآیند را متوقف کند — فقط این تلاش را rejected می‌کنیم.
+
+
         raise RuntimeError(f"خطای GraphQL: {msg}")
     return data.get("data", {})
 
@@ -213,8 +213,7 @@ async def _single_attempt(client: httpx.AsyncClient, token: str, service_id: str
                            environment_id: str, application_port: int,
                            attempt_no: int, winner_holder: dict, reachable: set,
                            win_lock: asyncio.Lock):
-    """یک تلاش برای ساخت پروکسی. اگر دامنه جزو دامنه‌های سالم بود و هنوز برنده‌ای
-    اعلام نشده، این را برنده می‌کند؛ در غیر این صورت بلافاصله حذف می‌شود."""
+
     try:
         proxy = await _create_proxy(client, token, service_id, environment_id, application_port)
     except _AuthError as exc:
@@ -386,11 +385,11 @@ def stop_job() -> bool:
     return False
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ساخت/حذف TCP Proxy عمومی برای یک پورت دلخواه — بدون محدودیت به دامنه‌ی خاص
-# با استفاده از توکنی که کاربر یک‌بار ذخیره کرده — این توابع توسط main.py
-# هنگام ساخت/حذف/تغییر پورت کانفیگ‌های Telegram Proxy صدا زده می‌شوند.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
 
 async def create_public_proxy_for_port(application_port: int) -> dict:
     token = load_token()

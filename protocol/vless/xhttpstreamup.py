@@ -1,13 +1,13 @@
-# xhttpstreamup.py
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP — آپلینک stream-up (یک POST پیوسته روی یک session) برای VLESS
-# منطق اصلی (session, quota, adaptive flow) در xhttp_core.py قرار دارد.
-# دقیقاً هم‌راستا با نسخه‌ی مرجع: بدون لاک روی هر chunk. اون لاک باعث می‌شد اگر
-# rotation دو POST هم‌پوشان بفرسته، ترتیب بایت‌های نوشته‌شده روی TCP به‌هم بریزه
-# (چون stream-up بر خلاف packet-up هیچ seq نداره) و همین باعث افت شدید سرعت
-# (خرابی داده → قطع/ری‌ترای در لایه‌ی برنامه) می‌شد. اینجا هر session فقط با یک
-# POST فعال در آنِ واحد نوشته می‌شه، دقیقاً مثل کد مرجع.
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
 
 import time
 from datetime import datetime
@@ -28,7 +28,7 @@ from protocol.vless.xhttp_core import (
 router = APIRouter()
 
 
-# ══════════════════════════════ STREAM-UP (یک POST پیوسته) ══════════════════════════════
+
 @router.post("/xhttp-siz10/stream-up/{uuid}/{session_id}")
 async def stream_up_upload(uuid: str, session_id: str, request: Request):
     ensure_reaper()
@@ -46,8 +46,8 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
         flow = _AdaptiveFlow()
         sess["flow"] = flow
 
-    conn = connections[sess["conn_id"]]   # یک بار لوک‌آپ، نه هر چانک
-    writer = sess["writer"]               # ممکنه هنوز None باشه
+    conn = connections[sess["conn_id"]]
+    writer = sess["writer"]
 
     try:
         async for chunk in request.stream():

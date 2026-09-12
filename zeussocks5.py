@@ -13,23 +13,23 @@ import bottokentcpproxy
 
 logger = logging.getLogger("HS-Panel")
 
-IDLE_TIMEOUT = 300  # ثانیه؛ اگه هر دو طرف ساکت بود می‌بندیمش
+IDLE_TIMEOUT = 300
 
-# ── پیش‌فرض کانفیگ ──
-DEFAULT_TRAFFIC_LIMIT_GB = 10.0   # گیگابایت — 0 = نامحدود
-DEFAULT_EXPIRES_DAYS = 30          # روز — 0 = بی‌انقضا
-DEFAULT_MAX_CONNECTIONS_PER_IP = 3 # حداکثر اتصال همزمان از یک IP — 0 = نامحدود
+
+DEFAULT_TRAFFIC_LIMIT_GB = 10.0
+DEFAULT_EXPIRES_DAYS = 30
+DEFAULT_MAX_CONNECTIONS_PER_IP = 3
 
 zeus_proxy_state = {
     "running": False,
-    "phase": "idle",      # idle | starting | done | error
-    "result": None,        # dict کامل پروکسی
+    "phase": "idle",
+    "result": None,
     "error": None,
-    # ── آمار مصرف ──
-    "bytes_used": 0,       # بایت استفاده‌شده
-    "connections_by_ip": {},  # IP -> تعداد اتصال فعال
+
+    "bytes_used": 0,
+    "connections_by_ip": {},
     "active_connections": 0,
-    # ── کانفیگ‌ها ──
+
     "config": {
         "traffic_limit_gb": DEFAULT_TRAFFIC_LIMIT_GB,
         "expires_days": DEFAULT_EXPIRES_DAYS,
@@ -40,7 +40,7 @@ zeus_proxy_state = {
 _server: Optional[asyncio.base_events.Server] = None
 _creds = {"user": None, "password": None}
 _connections_by_ip: dict = defaultdict(int)
-_bytes_lock = asyncio.Lock() if False else None  # lazy init در event loop
+_bytes_lock = asyncio.Lock() if False else None
 
 
 def _rand(n: int, alphabet: str) -> str:
@@ -78,12 +78,12 @@ async def _pipe(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, peer
             chunk = await asyncio.wait_for(reader.read(65536), timeout=IDLE_TIMEOUT)
             if not chunk:
                 break
-            # بررسی انقضا / حجم در حین انتقال
+
             if _is_expired() or _is_traffic_exceeded():
                 break
             writer.write(chunk)
             await writer.drain()
-            # ثبت بایت مصرف‌شده
+
             zeus_proxy_state["bytes_used"] += len(chunk)
     except (asyncio.TimeoutError, ConnectionResetError, BrokenPipeError, OSError):
         pass
@@ -98,7 +98,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
     peer = writer.get_extra_info("peername")
     peer_ip = peer[0] if peer else "unknown"
 
-    # ── بررسی انقضا و حجم قبل از پذیرش ──
+
     if _is_expired():
         logger.info(f"ZeusSocks5: رد شد (منقضی) — {peer_ip}")
         writer.close()
@@ -108,7 +108,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         writer.close()
         return
 
-    # ── بررسی حداکثر اتصال per IP ──
+
     max_per_ip = zeus_proxy_state["config"]["max_connections_per_ip"]
     if max_per_ip and _connections_by_ip.get(peer_ip, 0) >= max_per_ip:
         logger.info(f"ZeusSocks5: رد شد (حداکثر اتصال از {peer_ip}) ← {_connections_by_ip.get(peer_ip)}/{max_per_ip}")
@@ -120,7 +120,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
     zeus_proxy_state["connections_by_ip"] = dict(_connections_by_ip)
 
     try:
-        # ── مرحله ۱: handshake ──
+
         head = await reader.readexactly(2)
         if head[0] != 0x05:
             return
@@ -133,7 +133,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         writer.write(b"\x05\x02")
         await writer.drain()
 
-        # ── مرحله ۲: احراز هویت (RFC1929) ──
+
         auth_head = await reader.readexactly(2)
         ulen = auth_head[1]
         uname = (await reader.readexactly(ulen)).decode(errors="ignore")
@@ -148,7 +148,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         writer.write(b"\x01\x00")
         await writer.drain()
 
-        # ── مرحله ۳: درخواست اتصال ──
+
         req_head = await reader.readexactly(4)
         ver, cmd, _rsv, atyp = req_head
         if ver != 0x05 or cmd != 0x01:
@@ -205,7 +205,7 @@ async def _handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWri
         zeus_proxy_state["active_connections"] = max(0, zeus_proxy_state.get("active_connections", 1) - 1)
         zeus_proxy_state["connections_by_ip"] = dict(_connections_by_ip)
 
-        # اگه حجم تموم شد یا منقضی شده، پروکسی رو حذف کن
+
         if _is_traffic_exceeded() or _is_expired():
             asyncio.get_event_loop().create_task(_auto_delete("حجم تمام شد" if _is_traffic_exceeded() else "منقضی شد"))
 
@@ -238,14 +238,14 @@ async def create_zeus_proxy(
     expires_days: Optional[int] = None,
     max_connections_per_ip: Optional[int] = None,
 ) -> dict:
-    """ساخت پروکسی Zeus با کانفیگ‌های حجم، انقضا و محدودیت اتصال per IP."""
+
     token = (token or "").strip()
     if token:
         bottokentcpproxy.save_token(token)
     if not bottokentcpproxy.has_saved_token():
         raise RuntimeError("توکن Railway وارد نشده و توکن ذخیره‌شده‌ای هم وجود ندارد")
 
-    # ── اعمال کانفیگ‌ها ──
+
     cfg = zeus_proxy_state["config"]
     if traffic_limit_gb is not None:
         cfg["traffic_limit_gb"] = max(0.0, float(traffic_limit_gb))
@@ -284,7 +284,7 @@ async def create_zeus_proxy(
 
 
 async def delete_zeus_proxy():
-    """TCP Proxy عمومی رو حذف و سرور SOCKS5 محلی رو می‌بندد."""
+
     global _server
     result = zeus_proxy_state.get("result")
     if result and result.get("proxy_id"):
@@ -315,14 +315,14 @@ def get_zeus_status() -> dict:
     cfg = zeus_proxy_state["config"]
     extra = {}
     if result:
-        # محاسبه درصد حجم مصرفی
+
         limit_bytes = cfg["traffic_limit_gb"] * 1024 ** 3 if cfg["traffic_limit_gb"] else 0
         used = zeus_proxy_state.get("bytes_used", 0)
         extra["bytes_used"] = used
         extra["bytes_used_gb"] = round(used / (1024 ** 3), 3)
         extra["traffic_limit_bytes"] = limit_bytes
         extra["traffic_percent"] = round(used / limit_bytes * 100, 1) if limit_bytes else None
-        # محاسبه روزهای مانده
+
         created_at = result.get("created_at", 0)
         if cfg["expires_days"]:
             elapsed = time.time() - created_at
@@ -344,7 +344,7 @@ def update_zeus_config(
     expires_days: Optional[int] = None,
     max_connections_per_ip: Optional[int] = None,
 ) -> dict:
-    """تغییر کانفیگ‌ها بدون ری‌استارت پروکسی (اعمال فوری)."""
+
     cfg = zeus_proxy_state["config"]
     if traffic_limit_gb is not None:
         cfg["traffic_limit_gb"] = max(0.0, float(traffic_limit_gb))
@@ -352,7 +352,7 @@ def update_zeus_config(
         cfg["expires_days"] = max(0, int(expires_days))
     if max_connections_per_ip is not None:
         cfg["max_connections_per_ip"] = max(0, int(max_connections_per_ip))
-    # به‌روزرسانی result هم اگه پروکسی فعال است
+
     result = zeus_proxy_state.get("result")
     if result:
         result["traffic_limit_gb"] = cfg["traffic_limit_gb"]

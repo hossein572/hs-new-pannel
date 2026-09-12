@@ -1,15 +1,15 @@
-# relay_vless.py
-# بخش VLESS Relay — جدا شده از main.py (منطق اصلی دست‌نخورده)
-# تغییر: ثبت IP واقعی کلاینت (با احتساب هدر x-forwarded-for پشت پراکسی) در connections
-#
-# بهینه‌سازی سرعت/تاخیر (هماهنگ با همون سطح تیونینگ که Trojan/Shadowsocks دارن):
-#   1. RELAY_BUF: 256KB → 1MB (همون مقدار Trojan/Shadowsocks/XHTTP)
-#   2. WRITE_HIGH_WATER جدا از RELAY_BUF: drain فقط وقتی واقعاً بافر پر باشه
-#   3. _QuotaGate تطبیقی به‌جای check_and_use روی هر فریم WS به‌تنهایی —
-#      قبلاً هر فریم یک بار LINKS_LOCK می‌گرفت که روی ترافیک پرسرعت گلوگاه
-#      و منبع تاخیر اضافه بود؛ الان مثل Trojan/Shadowsocks batched/adaptive شد.
-#   4. _tune_socket: TCP_NODELAY + بافر ۴MB سطح OS (قبلاً فقط TCP_NODELAY ست
-#      می‌شد و SO_SNDBUF/SO_RCVBUF اصلاً تنظیم نمی‌شدن)
+
+
+
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import socket
@@ -30,15 +30,15 @@ from main import (
     bump_user_traffic,
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# VLESS Relay — بهینه‌شده برای حداکثر throughput و کمترین تاخیر
-# ══════════════════════════════════════════════════════════════════════════════
 
-RELAY_BUF = 1024 * 1024          # 1 MB — هماهنگ با Trojan/Shadowsocks/XHTTP
-SOCK_BUF = 4 * 1024 * 1024       # 4 MB بافر سوکت سطح OS
-WRITE_HIGH_WATER = 512 * 1024    # drain فقط وقتی بیشتر از 512KB در بافر باشه
 
-# تنظیمات QuotaGate تطبیقی (batched quota check به‌جای per-frame lock)
+
+
+RELAY_BUF = 1024 * 1024
+SOCK_BUF = 4 * 1024 * 1024
+WRITE_HIGH_WATER = 512 * 1024
+
+
 QUOTA_MIN_BATCH = 32 * 1024
 QUOTA_MAX_BATCH = 2 * 1024 * 1024
 QUOTA_START_BATCH = 128 * 1024
@@ -46,7 +46,7 @@ QUOTA_CHECK_INTERVAL = 0.25
 
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """TCP_NODELAY + بافرهای بزرگ سوکت برای کاهش overhead سیستم‌عامل و تاخیر."""
+
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock is None:
@@ -61,11 +61,7 @@ def _tune_socket(writer: asyncio.StreamWriter):
 
 
 class _QuotaGate:
-    """
-    batch quota check تطبیقی بر اساس EWMA نرخ ترافیک هر اتصال — به‌جای گرفتن
-    LINKS_LOCK روی هر فریم WS، هر QUOTA_CHECK_INTERVAL ثانیه یا هر QUOTA حجم
-    batch شده یک بار چک می‌کنه. همون الگویی که Trojan/Shadowsocks استفاده می‌کنن.
-    """
+
     __slots__ = ("uuid", "pending", "last_check", "ok", "batch_bytes", "rate_ewma")
 
     def __init__(self, uuid: str):
@@ -171,7 +167,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             if conn is not None:
                 conn["bytes"] += len(data)
             writer.write(data)
-            # drain فقط وقتی واقعاً بافر پر باشه، نه هر بار (کاهش تاخیر)
+
             if writer.transport.get_write_buffer_size() > WRITE_HIGH_WATER:
                 await writer.drain()
     except (WebSocketDisconnect, Exception):
@@ -208,4 +204,4 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
     finally:
         await gate.flush()
 
-# اندپوینت websocket_tunnel به protocol/vless/websocket.py منتقل شد.
+

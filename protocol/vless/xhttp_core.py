@@ -1,12 +1,12 @@
-# xhttp_core.py
-# ══════════════════════════════════════════════════════════════════════════════
-# XHTTP Core — موتور مشترک ترنسپورت XHTTP برای VLESS و Trojan
-#  (این فایل معادل ss_xhttp_core برای شادوساکس است: تمام منطق session/quota/flow
-#   اینجاست؛ فایل‌های xhttpstreamon.py / xhttpstreamup.py / xhttshadpacketup.py
-#   در پوشه‌ی vless/ و trojan/ فقط route ها را تعریف می‌کنند و از این هسته
-#   استفاده می‌کنند. تشخیص vless در برابر trojan به‌صورت خودکار و بر اساس
-#   پروتکل ثبت‌شده‌ی همان uuid در لحظه‌ی باز شدن TCP انجام می‌شود.)
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
 
 import asyncio
 import secrets
@@ -34,39 +34,39 @@ from main import (
 from protocol.vless.vless import parse_vless_header, check_and_use
 
 
-XHTTP_BUF = 1024 * 1024      # افزایش از 512K به 1MB برای throughput بالاتر روی لینک‌های پرسرعت
+XHTTP_BUF = 1024 * 1024
 DOWNLINK_QUEUE_MAX = 512
-SESSION_IDLE_TIMEOUT = 30          # سشن‌هایی که هنوز TCP باز نکردن (هندشیک ناقص مونده)
-SESSION_IDLE_TIMEOUT_ACTIVE = 90   # سشن‌هایی که TCP باز کردن ولی دیگه هیچ ترافیکی (نه رید نه رایت) ردوبدل نشده
+SESSION_IDLE_TIMEOUT = 30
+SESSION_IDLE_TIMEOUT_ACTIVE = 90
 REAPER_INTERVAL = 10
 TCP_CONNECT_TIMEOUT = 10.0
 
-# ── تنظیمات موتور تطبیقی ──────────────────────────────────────────────────────
-SOCK_BUF_SIZE = 4 * 1024 * 1024     # افزایش از 2MB به 4MB برای throughput بالاتر
-                                     # (قبلاً کامنت این تغییر رو می‌گفت ولی مقدار واقعی
-                                     #  هنوز 2MB مونده بود — همینجا واقعاً به 4MB رسید،
-                                     #  هم‌راستا با نسخه‌ی Trojan که از قبل 4MB بود)
 
-# _AdaptiveFlow: بازه‌ی مجاز برای high-water تطبیقی (AIMD)
+SOCK_BUF_SIZE = 4 * 1024 * 1024
+
+
+
+
+
 FLOW_MIN_HW = 256 * 1024
-FLOW_MAX_HW = 32 * 1024 * 1024      # سقف بالاتر برای لینک‌های خیلی سریع
-FLOW_START_HW = 2 * 1024 * 1024     # شروع متعادل (نه ۸MB که لینک ضعیف رو اورلود
-                                     # می‌کرد، نه ۵۱۲KB که هیچ‌وقت رشد نمی‌کرد)
-FLOW_FAST_DRAIN_MS = 12.0   # قبلاً 2.0 بود — این آستانه برای «رشد بده» بود، ولی
-                             # روی لینک ضعیف/موبایل ایران هر drain معمولی هم بیشتر
-                             # از 2ms طول می‌کشه، پس هیچ‌وقت شرط رشد برقرار نمی‌شد و
-                             # بافر برای همیشه روی همون مقدار شروع قفل می‌موند.
-                             # حالا زیر 12ms یعنی "لینک داره خوب جواب می‌ده" → رشد کن.
-FLOW_SLOW_DRAIN_MS = 40.0   # قبلاً 25.0 — بالای این یعنی واقعاً کند شده → فوری نصفش کن
-                             # (فاصله‌ی 12→40 به‌جای 2→25، منطقه‌ی خنثی رو منطقی‌تر می‌کنه)
+FLOW_MAX_HW = 32 * 1024 * 1024
+FLOW_START_HW = 2 * 1024 * 1024
 
-# _QuotaGate: بازه‌ی مجاز برای batch تطبیقی چک کوتا
+FLOW_FAST_DRAIN_MS = 12.0
+
+
+
+
+FLOW_SLOW_DRAIN_MS = 40.0
+
+
+
 QUOTA_MIN_BATCH = 32 * 1024
-QUOTA_MAX_BATCH = 4 * 1024 * 1024   # سقف بالاتر تا await های کوتا کمتر بشه روی ترافیک سنگین
-QUOTA_START_BATCH = 256 * 1024      # شروع بالاتر: کمتر await کردن در همون ثانیه‌های اول آپلود
-QUOTA_CHECK_INTERVAL = 0.25  # سقف زمانی؛ حتی اگر batch پر نشده، بعد این مدت چک کن
+QUOTA_MAX_BATCH = 4 * 1024 * 1024
+QUOTA_START_BATCH = 256 * 1024
+QUOTA_CHECK_INTERVAL = 0.25
 
-PACKET_UP_HIGH_WATER = 2 * 1024 * 1024  # packet-up همون منطق ساده‌ی قبلی رو داره
+PACKET_UP_HIGH_WATER = 2 * 1024 * 1024
 
 xhttp_sessions: dict = {}
 XHTTP_LOCK = asyncio.Lock()
@@ -92,7 +92,7 @@ def _resp_headers(fp: str) -> dict:
 
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """TCP_NODELAY + بافرهای بزرگ‌تر سوکت برای کاهش سربار سیستم‌عامل روی ترافیک بالا."""
+
     sock = writer.transport.get_extra_info("socket")
     if not sock:
         return
@@ -107,11 +107,7 @@ def _tune_socket(writer: asyncio.StreamWriter):
 
 
 class _QuotaGate:
-    """
-    نسخه‌ی تطبیقی: به‌جای await check_and_use() به‌ازای هر چانک، و به‌جای یک آستانه‌ی
-    ثابت، نرخ واقعی ترافیک هر سشن رو با EWMA اندازه می‌گیره و اندازه‌ی batch رو زنده
-    عوض می‌کنه.
-    """
+
     __slots__ = ("uuid", "pending", "last_check", "ok", "batch_bytes", "rate_ewma")
 
     def __init__(self, uuid: str):
@@ -156,9 +152,7 @@ class _QuotaGate:
 
 
 class _AdaptiveFlow:
-    """
-    high-water تطبیقی برای drain(), رفتار شبیه AIMD در TCP congestion control.
-    """
+
     __slots__ = ("high_water", "last_drain_ms")
 
     def __init__(self):
@@ -224,7 +218,7 @@ async def _check_link(uuid: str):
 
 
 async def _get_or_create_session(uuid: str, mode: str, session_id: str, ip: str = "نامشخص") -> dict:
-    """Session بر اساس session_id که خودِ کلاینت در URL فرستاده، lazily ساخته می‌شه."""
+
     async with XHTTP_LOCK:
         sess = xhttp_sessions.get(session_id)
         if sess is not None:
@@ -245,8 +239,8 @@ async def _get_or_create_session(uuid: str, mode: str, session_id: str, ip: str 
             "last_seen": time.time(),
             "conn_id": conn_id, "tcp_open": False, "closed": False,
             "seq_buf": {}, "next_seq": 0,
-            "gate": None,  # لازی ساخته می‌شه: _QuotaGate تطبیقی مخصوص stream-up
-            "flow": None,  # لازی ساخته می‌شه: _AdaptiveFlow مخصوص stream-up
+            "gate": None,
+            "flow": None,
         }
         xhttp_sessions[session_id] = sess
         logger.info(f"new XHTTP[{mode}] session [{session_id[:8]}] uuid={uuid[:8]} ip={ip}")
@@ -317,7 +311,7 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     gate = _QuotaGate(uuid)
     close_reason = "remote-eof"
     first = True
-    # conn_id رو یک‌بار cache می‌کنیم تا در هر iteration از XHTTP_LOCK بی‌نیاز بشیم
+
     cached_conn = connections.get(conn_id) if conn_id else None
     try:
         while True:
@@ -333,7 +327,7 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
                 close_reason = "quota-exceeded"
                 logger.warning(f"XHTTP[{session_id[:8]}] downlink quota exceeded, closing")
                 break
-            # بروزرسانی bytes بدون lock — dict access در CPython atomic هست
+
             if cached_conn is not None:
                 cached_conn["bytes"] += len(data)
             if vless_prefix and first:
@@ -349,8 +343,8 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
         logger.error(f"XHTTP[{session_id[:8]}] downlink pump crashed: {type(exc).__name__}: {exc}\n{tb}")
     finally:
         await gate.flush()
-        # اگر مقصد (remote) کانکشن رو بست یا کوتا تموم شد، اینجا واقعاً باید کل
-        # session رو ببندیم چون دیگه TCP زنده نیست و POST بعدی هم فایده‌ای نداره.
+
+
         await _teardown(session_id, reason=close_reason)
 
 
@@ -359,8 +353,8 @@ async def _open_tcp_for_session(session_id: str, uuid: str, sess: dict, first_ch
         link = LINKS.get(uuid)
     proto = (link.get("protocol", "") or "") if link else ""
     is_trojan = proto.startswith("trojan")
-    # VLESS-XHTTP نیاز به \x00\x00 prefix داره (مثل VLESS-WS)
-    # Trojan-XHTTP نیاز نداره — پروتکل Trojan هیچ response prefix نمی‌خواد
+
+
     vless_prefix = not is_trojan
     try:
         reader, writer, address, port = await _open_tcp_from_header(first_chunk, is_trojan=is_trojan)

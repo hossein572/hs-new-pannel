@@ -1,19 +1,19 @@
-# updater.py — بروزرسانی پنل بر اساس مانیفست JSON که یک Cloudflare Worker
-# تولید می‌کند (به‌جای فایل PHP روی InfinityFree که به‌خاطر anti-bot/محدودیت
-# منابع کنار گذاشته شد). مانیفست شامل نسخه، توضیحات و لیست فایل‌های
-# قابل‌دانلود (هر کدام با URL و sha1) است.
-# + نگهداری تاریخچه‌ی کامل بروزرسانی‌ها (زمان، نسخه، توضیحات) روی دیسک دائمی
-# + کش سراسری برای مانیفست تا صرف‌نظر از تعداد کاربران پنل، فشار درخواست به
-#   سرور Worker ثابت و کم بماند (Cloudflare Workers هم سقف رایگان دارن،
-#   پس این کش هنوز لازمه)
+
+
+
+
+
+
+
+
 import asyncio, os, time, traceback, re, json, hashlib
 from pathlib import Path
 from collections import deque
 import httpx
 
-# آدرس Worker مانیفست. مقدار پیش‌فرض روی ساب‌دامین workers.dev شماست؛ در صورت
-# نیاز (مثلاً بعد از ست‌کردن دامنه‌ی اختصاصی روی Worker) می‌توانید با متغیر
-# محیطی UPDATE_MANIFEST_URL آن را override کنید.
+
+
+
 UPDATE_MANIFEST_URL = os.environ.get(
     "UPDATE_MANIFEST_URL", ""
 )
@@ -21,10 +21,10 @@ UPDATE_MANIFEST_URL = os.environ.get(
 APP_DIR = Path(os.environ.get("APP_DIR", os.getcwd()))
 LOCAL_VERSION_FILE = APP_DIR / "version.txt"
 
-# سازگاری با main.py که هنوز REPO/BRANCH رو از updater import می‌کنه
-# (مربوط به نسخه‌ی قدیمی گیت‌هابی). این‌جا دیگه معنای واقعی «ریپو/برنچ»
-# ندارن، فقط برای جلوگیری از ImportError نگه داشته شدن. در پنل به‌جاشون
-# آدرس مانیفست Worker نمایش داده می‌شه.
+
+
+
+
 REPO = UPDATE_MANIFEST_URL
 BRANCH = "cf-worker-manifest"
 
@@ -34,15 +34,15 @@ HISTORY_FILE = DATA_DIR / "update_history.json"
 update_log: deque = deque(maxlen=300)
 update_state = {"running": False, "progress": 0}
 
-# ── کش سراسری مانیفست ─────────────────────────────────────────────────────────
-# درخواست از سمت سرور پنل به Worker زده می‌شود، نه از مرورگر هر کاربر. بدون این
-# کش، اگر پنل هزاران کاربر هم‌زمان داشته باشد که هر کدام مرتب /api/version را
-# صدا می‌زنند، فشار زیادی روی Worker (که با وجود اسکیل بالا، سقف رایگان
-# 100k req/day داره) وارد می‌شود. با این کش، صرف‌نظر از تعداد کاربران،
-# فقط هر MANIFEST_CACHE_TTL ثانیه یک‌بار درخواست واقعی زده می‌شود.
+
+
+
+
+
+
 _manifest_cache: dict = {"data": None, "ts": 0.0}
 MANIFEST_CACHE_LOCK = asyncio.Lock()
-MANIFEST_CACHE_TTL = float(os.environ.get("MANIFEST_CACHE_TTL", "120"))  # ثانیه
+MANIFEST_CACHE_TTL = float(os.environ.get("MANIFEST_CACHE_TTL", "120"))
 
 
 def _log(msg: str):
@@ -51,7 +51,7 @@ def _log(msg: str):
 
 
 def _parse_kv_text(text: str) -> dict:
-    """پارس فایل محلی version.txt (فرمت key=value) که بعد از هر آپدیت نوشته می‌شود."""
+
     result = {}
     for line in text.splitlines():
         line = line.strip()
@@ -69,7 +69,7 @@ def _parse_kv_text(text: str) -> dict:
 
 
 def _parse_version_tuple(v: str):
-    """'9.4' -> (9, 4) — برای مقایسه‌ی عددی صحیح بین نسخه‌ها."""
+
     if not v:
         return None
     parts = re.findall(r"\d+", v)
@@ -79,7 +79,7 @@ def _parse_version_tuple(v: str):
 
 
 def is_newer_version(latest: str, current: str) -> bool:
-    """True فقط وقتی latest واقعاً از current بزرگ‌تر باشد (مقایسه‌ی عددی)."""
+
     if not latest:
         return False
     if not current or current == "نامشخص":
@@ -91,7 +91,7 @@ def is_newer_version(latest: str, current: str) -> bool:
 
 
 def get_current_version_info() -> dict:
-    """نسخه و توضیحات فعلی نصب‌شده روی سرور، از فایل محلی version.txt."""
+
     try:
         if LOCAL_VERSION_FILE.exists():
             kv = _parse_kv_text(LOCAL_VERSION_FILE.read_text(encoding="utf-8"))
@@ -109,8 +109,7 @@ def get_current_version() -> str:
 
 
 def _write_local_version_file(version: str, description: str):
-    """بعد از هر آپدیت موفق، version.txt محلی رو با نسخه‌ی جدید بازنویسی می‌کنه
-    تا get_current_version_info() نسخه‌ی درست رو نشون بده."""
+
     try:
         content = f"version={version}\ndescription={description}\n"
         tmp = LOCAL_VERSION_FILE.with_suffix(".tmp")
@@ -121,15 +120,15 @@ def _write_local_version_file(version: str, description: str):
 
 
 async def _fetch_manifest_from_worker() -> dict:
-    """درخواست واقعی (بدون کش) به Cloudflare Worker مانیفست."""
+
     if not UPDATE_MANIFEST_URL:
         return {"error": "UPDATE_MANIFEST_URL تنظیم نشده"}
     url = f"{UPDATE_MANIFEST_URL}?_={int(time.time())}"
     headers = {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
-        # روی Worker معمولاً لازم نیست، ولی نگه داشته شده تا اگر جلوی Worker
-        # یک پراکسی/CDN دیگه هم قرار گرفت، رفتار یکسان بمونه.
+
+
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
@@ -145,19 +144,19 @@ async def _fetch_manifest_from_worker() -> dict:
             try:
                 data = json.loads(raw_text)
             except json.JSONDecodeError as je:
-                # به‌جای پیام مبهم "Expecting value..."، کل محتوای واقعی برگشتی
-                # رو (تا سقف مشخص) لاگ می‌کنیم تا خودتون دقیقاً ببینید Worker
-                # چی برگردونده (خطای اسکریپت؟ صفحه‌ی Cloudflare error؟ خالی؟).
+
+
+
                 ctype = r.headers.get("content-type", "?")
                 full = raw_text.strip()
                 _log(f"⚠️ پاسخ Worker معتبر (JSON) نبود | content-type={ctype} | status={r.status_code} | طول={len(full)} کاراکتر")
                 if not full:
                     return {"error": "پاسخ Worker کاملاً خالی بود (بررسی کنید route درست تنظیم شده)"}
-                # چون هر خط لاگ جدا نمایش داده می‌شه، متن رو تکه‌تکه (هر تکه ۵۰۰ کاراکتر) چاپ می‌کنیم
-                # تا کل HTML/متن برگشتی رو بدون افتادگی، در باکس لاگ پنل ببینید.
+
+
                 CHUNK = 500
                 total_chunks = (len(full) + CHUNK - 1) // CHUNK
-                MAX_CHUNKS = 20  # سقف ~10000 کاراکتر، برای جلوگیری از سنگین شدن لاگ
+                MAX_CHUNKS = 20
                 for idx in range(min(total_chunks, MAX_CHUNKS)):
                     piece = full[idx * CHUNK: (idx + 1) * CHUNK]
                     _log(f"📄 RAW[{idx+1}/{total_chunks}]: {piece}")
@@ -183,12 +182,7 @@ async def _fetch_manifest_from_worker() -> dict:
 
 
 async def get_latest_version_info() -> dict:
-    """
-    نسخه و توضیحات مانیفست Worker، با کش سراسری. بین بازه‌های کش، همه‌ی
-    کاربران پنل از یک نتیجه‌ی مشترک سرو می‌شوند (مستقل از تعدادشان).
-    خروجی این تابع فقط شامل version/description است (برای نمایش در پنل)؛
-    لیست files برای دانلود واقعی در perform_update جداگانه گرفته می‌شود.
-    """
+
     now = time.time()
     async with MANIFEST_CACHE_LOCK:
         cached = _manifest_cache["data"]
@@ -212,7 +206,7 @@ async def get_latest_version_info() -> dict:
         return {"version": result.get("version", ""), "description": result.get("description", "")}
 
 
-# سازگاری با کد قدیمی که فقط dict شامل version می‌خواست
+
 async def get_latest_version() -> dict:
     return await get_latest_version_info()
 
@@ -227,7 +221,7 @@ def _check_writable() -> str | None:
         return str(e)
 
 
-# ── تاریخچه‌ی بروزرسانی‌ها (پایدار روی دیسک، مستقل از کد پروژه) ───────────────
+
 def load_update_history() -> list:
     try:
         if HISTORY_FILE.exists():
@@ -243,7 +237,7 @@ def _save_update_history_entry(entry: dict):
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         hist = load_update_history()
-        hist.insert(0, entry)   # جدیدترین بالا
+        hist.insert(0, entry)
         hist = hist[:200]
         HISTORY_FILE.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
@@ -251,14 +245,13 @@ def _save_update_history_entry(entry: dict):
 
 
 async def _download_one_file(client: httpx.AsyncClient, entry: dict) -> tuple[bool, str]:
-    """یک فایل از مانیفست رو دانلود و روی دیسک (APP_DIR/path) می‌نویسه.
-    خروجی: (موفق؟, پیام خطا در صورت شکست)"""
+
     rel = entry.get("path", "").lstrip("/")
     url = entry.get("url", "")
     expected_sha1 = entry.get("sha1")
     if not rel or not url:
         return False, "ورودی مانیفست ناقص است (path/url خالی)"
-    # جلوگیری از path traversal (../ در مسیر فایل)
+
     target = (APP_DIR / rel).resolve()
     if not str(target).startswith(str(APP_DIR.resolve())):
         return False, f"مسیر غیرمجاز رد شد: {rel}"
@@ -280,8 +273,7 @@ async def _download_one_file(client: httpx.AsyncClient, entry: dict) -> tuple[bo
 
 
 async def perform_update() -> bool:
-    """مانیفست Worker رو می‌گیره، فایل‌های لیست‌شده رو دانلود و جایگزین می‌کنه،
-    و در پایان version.txt محلی رو با نسخه‌ی جدید بروزرسانی می‌کنه."""
+
     update_state["running"] = True
     update_state["progress"] = 1
     _log(f"شروع بروزرسانی | MANIFEST={UPDATE_MANIFEST_URL or 'خالی!'} | APP_DIR={APP_DIR}")
@@ -340,7 +332,7 @@ async def perform_update() -> bool:
                     failed += 1
                     fail_msgs.append(f"{entry.get('path','?')}: {err}")
                     _log(f"⚠️ خطا در دانلود {entry.get('path','?')}: {err}")
-                # پیشرفت بین 15 تا 90 درصد رو متناسب با تعداد فایل‌ها آپدیت کن
+
                 update_state["progress"] = 15 + int((i / total) * 75)
 
         _log(f"دانلود تمام شد. نوشته‌شده: {written} | خطادار: {failed}")
@@ -359,16 +351,16 @@ async def perform_update() -> bool:
             })
             return False
 
-        # نسخه‌ی محلی رو با مقدار جدید بروزرسانی کن (این جایگزین «فایل version.txt
-        # داخل ریپو» در روش قبلی گیت‌هابیه، چون اینجا خبری از تارگز کل ریپو نیست)
+
+
         _write_local_version_file(new_version, new_description)
 
         _log(f"✅ بروزرسانی با موفقیت اعمال شد. نسخه‌ی جدید: {new_version}")
         _log("سرور در حال راه‌اندازی مجدد...")
         update_state["progress"] = 100
 
-        # کش مانیفست رو باطل می‌کنیم تا بلافاصله بعد از ری‌استارت، نسخه‌ی
-        # واقعی و تازه نمایش داده بشه.
+
+
         _manifest_cache["data"] = None
         _manifest_cache["ts"] = 0.0
 

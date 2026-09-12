@@ -1,4 +1,4 @@
-# central.py — ارتباط با سرویس مرکزی HS Panel
+
 import os
 import asyncio
 import httpx
@@ -45,7 +45,7 @@ async def fetch_announcements():
 
 
 async def report_announcement_views(ids: list[str]):
-    """اعلام می‌کند این instance این لیست از اعلان‌ها را دیده است (برای شمارش بازدید در ادمین مرکزی)."""
+
     if not CENTRAL_URL or not ids:
         return
     from main import get_host
@@ -60,7 +60,7 @@ async def report_announcement_views(ids: list[str]):
 
 
 async def fetch_support_messages():
-    """برمی‌گرداند: (messages, blocked)"""
+
     if not CENTRAL_URL:
         return [], False
     from main import get_host
@@ -91,5 +91,5 @@ async def send_support_message(body: str) -> dict:
 
 
 async def close_support_chat() -> bool:
-    # عمداً حذف شد — بستن چت فقط از پنل ادمین مرکزی مجاز است
+
     return False
